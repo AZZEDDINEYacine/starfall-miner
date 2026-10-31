@@ -5,3 +5,11 @@ export_credentials.cfg
 builds/
 *.apk
 *.aab
+bin/
+obj/
+*.user
+*.jks
+android/build/
+android/.gradle/
+__pycache__/
+*.pyc

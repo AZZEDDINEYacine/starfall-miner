@@ -1,4 +1,6 @@
-# Starfall Miner — revision 0.2
+# Starfall Miner — revision 0.3
+
+Revision 0.3 migrates the production game to typed C# on Godot 4.7.2 .NET. Simulation, direct-finger input, camera/orientation, presentation, and persistence have distinct responsibilities; the visual and gameplay design below is retained. Native macOS and Android are the delivery targets. There is no C# browser build.
 
 The game now separates its two activities spatially. Automatic mining is a quiet portrait view: watch the square planet dissolve, check the wallet, and open ship systems or the extraction log when needed. A full-width accented Take Control button is the main action. It requests landscape orientation and hands control to the pilot. Returning to autopilot requests portrait again.
 

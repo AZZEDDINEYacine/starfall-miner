@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://diymmfvbg4egi"]
 
-[ext_resource type="Script" uid="uid://bcs8p0frsmp6d" path="res://scripts/main.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/Main.cs" id="1"]
 
 [node name="StarfallMiner" type="Node2D" unique_id=1048214272]
 script = ExtResource("1")

@@ -1,0 +1,16 @@
+<Project Sdk="Godot.NET.Sdk/4.7.2">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <!-- The official Godot 4.7.2 prebuilt Android template embeds .NET 9. -->
+    <TargetFramework Condition="'$(GodotTargetPlatform)' == 'android'">net9.0</TargetFramework>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>StarfallMiner</RootNamespace>
+    <AssemblyName>StarfallMiner</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="builds/**" />
+    <Compile Remove="tests/**" Condition="'$(Configuration)' != 'Debug'" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,15 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Build C#", "type": "process", "command": "python3",
+      "args": ["tools/dev.py", "build"], "problemMatcher": "$msCompile",
+      "group": { "kind": "build", "isDefault": true }
+    },
+    { "label": "Test C#", "type": "process", "command": "python3", "args": ["tools/dev.py", "test"], "problemMatcher": "$msCompile", "group": "test" },
+    { "label": "Test rendered", "type": "process", "command": "python3", "args": ["tools/dev.py", "test-rendered"], "problemMatcher": "$msCompile" },
+    { "label": "Inspect game", "type": "process", "command": "python3", "args": ["tools/dev.py", "qa"], "problemMatcher": "$msCompile" },
+    { "label": "Export macOS", "type": "process", "command": "python3", "args": ["tools/dev.py", "export-macos"], "problemMatcher": "$msCompile" },
+    { "label": "Export Android", "type": "process", "command": "python3", "args": ["tools/dev.py", "export-android"], "problemMatcher": "$msCompile" }
+  ]
+}

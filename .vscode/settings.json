@@ -1,3 +1,5 @@
 {
-    "godotTools.editorPath.godot4": "/Applications/Godot_mono.app"
+    "godotTools.editorPath.godot4": "/Applications/Godot_mono.app/Contents/MacOS/Godot",
+    "dotnet.defaultSolution": "StarfallMiner.sln",
+    "files.exclude": { "**/.godot": true, "**/builds": true }
 }

@@ -1,78 +1,113 @@
-# Starfall Miner 0.2
+# Starfall Miner 0.3 — Godot C#
 
-An editable Godot 4.5.2 space-mining incremental, written in GDScript. Import `project.godot` and press F5. The game has no package, plugin, account, or network dependency.
+A native space-mining incremental using Godot **4.7.2 .NET** and the **.NET 10 SDK**. Desktop targets .NET 10; Android targets .NET 9 to match the official prebuilt template. All production gameplay, input, procedural visuals, UI, and sound are C#. Open `project.godot` with the .NET edition of Godot and press F5, or use the commands below.
 
-## This revision
+## Develop on this Mac
 
-- Menu buttons handle real touchscreen fingers directly, including a second finger while the first steers. Synthesized mouse input cannot duplicate purchases or steal a joystick.
-- Automatic mining uses a portrait dashboard with a prominent **TAKE CONTROL** action. Loadout and upgrades live in **SHIP SYSTEMS**; collected-resource statistics live in **CARGO LOG**.
-- Manual flight requests landscape orientation on Android. Management panels disappear, leaving a joystick, fire control, three small weapon selectors, boost, and compact resources. **AUTO PILOT** returns to portrait.
-- Mode changes retain the same planet, ship, projectiles, and debris. The camera eases its zoom and the flight HUD fades in without a scene reload.
-- The graphics use flat squares and a geometric ship. Blocks grow persistently brighter as their health decreases.
-- Destroyed ore produces two small fragments. They drift briefly, then magnetize into the ship. Credits and energy arrive on collection, with no floating reward-text clutter.
+The detected machine is Apple Silicon (`arm64`), with Godot at `/Applications/Godot_mono.app/Contents/MacOS/Godot` and .NET SDK 10.0.403. Python 3 is used for development commands; there are no third-party Python or gameplay NuGet dependencies.
 
-## Controls
+```sh
+python3 tools/dev.py import         # build C# and import assets on a fresh checkout
+python3 tools/dev.py build          # compile the actual game
+python3 tools/dev.py run            # rendered game, normal player save
+python3 tools/dev.py test           # isolated C# regression suite
+python3 tools/dev.py test-rendered  # the same suite with rendering enabled
+python3 tools/rendered_check.py     # rendered inspection + touchscreen checks + PNGs
+```
+
+SDK caches are kept under `.godot/`, outside source control. `NuGet.Config` includes the matching packages bundled with this Mac's Godot installation plus NuGet.org for runtime packs. Set `GODOT4` to the engine executable and adjust that feed if installing Godot elsewhere. `StarfallMiner.sln`, VS Code build/test/export tasks, and C# launch/attach configurations are included. Install the recommended Microsoft C# extension for debugging. The F5 launch configuration uses this Mac's Godot executable explicitly.
+
+Tests and inspection require `--test` and `--qa`, respectively. These runs never load or modify `user://starfall_save_v1.json`; their explicit persistence tests use `.godot/tests/`. Do not run two persistence regression suites concurrently because they share that disposable file.
+
+## Controls and behavior
 
 | Action | Touch | Desktop |
 | --- | --- | --- |
 | Enter manual flight | TAKE CONTROL | Button or Tab |
-| Return to auto mining | AUTO PILOT | Button or Tab |
-| Steer | Drag the lower-left flight area | WASD / arrows |
-| Fire | Hold the right FIRE circle; tap ore for a bonus shot | Space / click ore |
-| Change weapons | Ship Systems in auto; bottom selectors in flight | 1 / 2 / 3 or buttons |
+| Return to autopilot | AUTO PILOT | Button or Tab |
+| Steer | Drag lower-left flight area | WASD / arrows |
+| Fire | Hold FIRE; tap ore for a bonus shot | Space / click ore |
+| Weapons | Ship Systems or flight selectors | 1 / 2 / 3 |
 | Overdrive | BOOST, costing 5 energy | E |
 | Upgrades | Ship Systems | Same |
-| Resource statistics | Cargo Log or the flight resource strip | Same |
-| Pause and sound | II | Button or P / Escape |
+| Resource statistics | Cargo Log / wallet | Same |
+| Pause / sound | II | Button or P / Escape |
 
-The Android APK changes orientation automatically. Desktop Godot changes its window shape. Web browsers may require the user to rotate their phone or resize the window; the simulation and controls adapt without restarting.
+Automatic mode requests portrait orientation. Manual flight requests landscape on Android and reshapes the window on macOS. Camera and HUD transitions retain the live planet, ship, projectiles, and collectible fragments. Left steering and right firing have independent ownership; another finger can change weapons. Focus loss, OS pause, resizing, modal opening, and mode changes clear held input, including button presses.
 
-## Mining and progression
+The three original weapons, five block types, volatile cascades, upgrades, eight-second overdrive, sector bonuses, and endless progression are retained. Flat square blocks become persistently brighter as health falls. Each destroyed block emits two tiny fragments, one carrying its reward; credits and energy arrive on collection. Visible effects remain restrained and bounded. Difficulty and reward growth retain the original sector-501 cap.
 
-Autopilot flies, targets, fires, and collects resources on its own. All three weapons are available immediately: a rapid piercing lance, an area-damage cannon, and lightning that links up to five targets. Credits purchase firepower, fire rate, and ore-yield upgrades. Blue ore supplies energy for an eight-second overdrive. Red ore chains explosions through nearby blocks. Destroy every block to collect the sector bonus and warp to another planet. Equipment and upgrades carry over.
+## Architecture
 
-## Saves and updating
+- `scripts/Main.cs`: simulation coordination, movement, weapons, collection, economy, and progression.
+- `scripts/MiningPlanet.cs`: seeded typed ore grid, damage, chain reactions, persistent health colors.
+- `scripts/SimulationModels.cs`: typed blocks, fragments, shells, and short-lived effects. Currency, health, and accumulated credit values use `double`; accumulated resource counters use `long`; positions use Godot vectors.
+- `scripts/FlightInput.cs`, `scripts/TouchButton.cs`: world gestures and independent direct-touch menu ownership.
+- `scripts/WorldView.cs`: camera transforms, resize handling, and orientation requests.
+- `scripts/Hud.cs`, `scripts/Visuals.cs`, `scripts/MiningSound.cs`: presentation and synthesized sound.
+- `scripts/SaveStore.cs`: validated v1 JSON and atomic temporary-file replacement.
+- `tests/Smoke.cs`: actual C# scene integration tests with Viewport touch injection and legacy-save fixtures.
+- `tests/QaBridge.cs`: opt-in localhost inspection scene, excluded from exported assemblies and resources.
 
-The package ID and signing certificate are unchanged from 0.1, and the Android version code has increased to 2. The APK can update the earlier installation. Its existing save remains readable. Uncollected debris is now saved as well, preventing lost or duplicated rewards after reopening. The save location remains `user://starfall_save_v1.json`.
+The pre-migration game is recoverable from Git checkpoint `ce1e4b6`. Superseded GDScript and the Web export shell have been retired.
 
-Saving happens every eight seconds, on purchases and sector changes, on pause, and on focus loss or a normal close. Automatic mode awards catch-up credits on reopening at 25% of the last observed rate, capped at four hours. This does not simulate planet destruction while the game is closed. Session statistics restart on reopening; lifetime statistics remain saved. Android and browser saves are separate.
+## Saves
 
-## Project files
+The production filename and wire format remain **`user://starfall_save_v1.json`**, with `version: 1` and the original serialized field names. The application name and Android package identity remain unchanged. Both 0.1-format saves without pickup fields and 0.2 saves with pending collectible rewards are tested. C# planet generation is checked against the original serializer's seeded planet output.
 
-- `scripts/main.gd`: simulation, orientation, camera, input, weapons, debris collection, and saves.
-- `scripts/hud.gd`: separate portrait and landscape interfaces, loadout, upgrades, and resource log.
-- `scripts/touch_button.gd`: finger-owned touch buttons with canceled-touch and modal handling.
-- `scripts/planet.gd`: grid generation, damage, chain reactions, and brightness-based health.
-- `scripts/visuals.gd`: flat ship, beams, impacts, and debris.
-- `scripts/sound.gd`: synthesized sound effects.
-- `tests/smoke.gd`: game logic and real Viewport touch-input regression checks.
-- `assets/`: fonts and their license, icon, and web loader.
-- `export_presets.cfg`: Web, Android, and Linux presets.
+Saving occurs every eight seconds, after purchases, weapon/mode/sound changes and boost activation, on sector completion/progression, pause, focus loss, and normal close. Pending rewards and wallet values are committed together, preventing lost or duplicated collection on reopening a saved state. Automatic mode retains offline credits at 25% of the last observed rate, capped at four hours, without destroying planet blocks offline. Catch-up is immediately committed so it cannot be claimed twice. Malformed saves are rejected before applying partial state.
 
-## Validation
+## Native exports
 
-Use disposable user data for the save/load tests:
+Official matching .NET templates are fetched selectively and CRC-checked from the official archive. Godot 4.7's ARM64 preset expects an ARM64-named template binary; the preparation script uses Apple's `lipo` to thin the official universal template without modifying engine code.
 
-```bash
-XDG_DATA_HOME="$(mktemp -d)" godot --headless --path . --script res://tests/smoke.gd -- --test
+```sh
+python3 tools/fetch_templates.py macos.zip android_debug.apk version.txt
+python3 tools/dev.py export-macos
 ```
 
-The suite sends `InputEventScreenTouch` events through the real Viewport input pipeline to exercise menu activation, modal barriers, canceled touches, single purchases, mode switches, multi-finger weapon selection, and firing. It also checks mining, increasing block brightness, debris collection and exact rewards, progression, pause, and saves. The separate browser pass uses actual emulated touchscreen events for every menu action. Mouse clicks are not substituted for those menu tests.
+The macOS ZIP is `builds/Starfall-Miner-macOS.zip`. Extract it and open `Starfall Miner.app`. The application includes its .NET runtime and does not require the SDK. It is locally ad-hoc signed, not Developer ID signed or notarized for public distribution.
 
-The APK has been packaged and signed, but physical Android hardware behavior still needs a device pass, particularly the OS rotation animation and lifecycle. The previous touchscreen-menu failure was reproduced before the controls were replaced.
+Android setup is project-local and downloads SHA-256-verified official JDK 17 and Android command-line tools, then installs SDK platform 35, build-tools 35.0.1, and platform-tools. It presents/accepts the standard Android SDK licenses during the authorized installation. Prebuilt APK export does not require an NDK, CMake, Android workload, or Gradle build.
 
-## Export
+```sh
+python3 tools/setup_android.py
+python3 tools/dev.py export-android
+python3 tools/verify_android.py     # repeat APK identity/signature/alignment verification
+```
 
-Use matching Godot 4.5.2 export templates. Android uses Java 17 and the Android SDK configured in Godot's Editor Settings. The preset exports an ARM64 APK for Android 7.0 or newer without Gradle. Its debug signing key is kept outside the source project; use your own local debug key when exporting. Publishing needs your own release signing and AAB configuration.
+The Android command configures Godot's two SDK editor settings; their prior contents are backed up to `.godot/editor-settings-before-android.tres`. It creates a local debug signing key under `.godot/keys/` if no `GODOT_ANDROID_KEYSTORE_DEBUG_PATH` is supplied. The key is ignored by Git and should be retained for future builds using that certificate. To use an existing key, set the official `GODOT_ANDROID_KEYSTORE_DEBUG_PATH`, `GODOT_ANDROID_KEYSTORE_DEBUG_USER`, and `GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD` environment variables before exporting. No private signing material is committed.
 
-The Web preset uses the single-threaded template and needs an HTTP(S) server. The outer demo package includes a Python launcher. Do not open its HTML directly as a local file.
+The APK path is `builds/Starfall-Miner-Android.apk`, package **`com.starfall.miner.demo`**, version **0.3.0 / code 3**, ARM64, minimum API 24, target API 36. **The previous demo's private signing key and original APK are absent locally. A newly signed APK cannot be claimed to update the installed demo without comparing signing certificates.** Uninstalling an existing demo may erase its save; retain the matching original signing key for an in-place update.
 
-Official documentation:
+The official 4.7.2 prebuilt APK template supports a `net9.0` target. The installed .NET 10 SDK compiles it without installing a separate .NET 9 SDK. Target SDK 36 and minimum SDK 24 come from the template; SDK overrides require Gradle. Build-tools 35.0.1 are accepted for this export, as verified by successful packaging and signature/alignment checks.
 
-- https://docs.godotengine.org/en/4.5/tutorials/export/exporting_for_android.html
-- https://docs.godotengine.org/en/4.5/classes/class_displayserver.html#class-displayserver-method-screen-set-orientation
-- https://docs.godotengine.org/en/4.5/classes/class_input.html
+Godot's official documentation describes C# Android support as experimental. Physical Android input, OS rotation animation, suspend/resume, and device-specific graphics require a phone pass. Desktop resizing and injected Viewport touch events are identified separately in `QA_REPORT.md`.
+
+The template's .NET 9 target reaches the end of Microsoft support on **10 November 2026**. A later runtime update requires a compatible newer template or a Gradle export targeting .NET 10. [Microsoft support policy](https://dotnet.microsoft.com/en-us/platform/support/policy/dotnet-core).
+
+## Local inspection
+
+```sh
+python3 tools/dev.py qa
+# In a second terminal:
+python3 tools/inspect.py '{"command":"state"}'
+python3 tools/inspect.py '{"command":"screenshot","name":"review.png"}'
+python3 tools/inspect.py '{"command":"touch","x":108,"y":428,"finger":2,"pressed":true}'
+python3 tools/inspect.py '{"command":"quit"}'
+```
+
+The C# QA scene binds only `127.0.0.1:47831`, requires `--qa`, and uses isolated saves. It supports state, freeze, resize, touch, drag, emulated mouse, lifecycle notifications, screenshots, and quit. PNGs are restricted to `builds/qa/`. Rendering is forced for screenshots even when macOS occludes the window behind the IDE. Runtime logs and `rendered-results.json` are also under `builds/qa/`. This is the working local inspection mechanism; no unverified MCP server is required. It is not enabled by the normal main scene and is excluded from native exports.
+
+There is no Web export preset. The older browser demo in the surrounding delivery directory is legacy GDScript output and does not validate this C# game. Godot 4 currently does not support official C# Web exports.
+
+## Official references
+
+- [C# setup, VS Code, SDKs, and platform caveats](https://docs.godotengine.org/en/stable/tutorials/scripting/c_sharp/c_sharp_basics.html)
+- [C# platform support](https://docs.godotengine.org/en/stable/tutorials/scripting/c_sharp/)
+- [Android export requirements and signing](https://docs.godotengine.org/en/stable/tutorials/export/exporting_for_android.html)
+- [Android command-line tools](https://developer.android.com/studio#command-tools)
 
 ## License
 
-Original game code, procedural graphics, and synthesized sound are MIT-licensed; see `LICENSE`. DejaVu fonts retain `assets/FONT_LICENSE.txt`. `THIRD_PARTY_NOTICES.txt` contains Godot's license and engine dependency notices. Auto Drill: Galaxy was a gameplay reference; its assets and code are not included.
+Original code, procedural graphics, and synthesized sound are MIT-licensed; see `LICENSE`. DejaVu fonts retain `assets/FONT_LICENSE.txt`. `THIRD_PARTY_NOTICES.txt` contains the Godot and engine dependency notices. Auto Drill: Galaxy was a gameplay reference; none of its assets or code are included.
