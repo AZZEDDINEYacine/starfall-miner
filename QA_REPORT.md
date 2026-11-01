@@ -1,5 +1,9 @@
 # Starfall Miner 0.3 migration verification
 
+## Planet-expedition branch status
+
+The level-design branch adds thirteen larger, named layouts, camera following, difficulty-scaled completion rewards, iron, and weapon modules. On this Windows PC, the matching Godot 4.7.2 .NET editor was found in Downloads and .NET SDK 10.0.403 was found in Program Files. The active VS Code terminal could not resolve `dotnet` because the SDK directory was absent from its path; the tracked debug configuration also pointed to a Mac executable. The matching Godot path and .NET directory were added to the Windows user environment for new processes. The already-running VS Code session needs a restart to see them. The active Downloads checkout has unrelated, uncommitted edits and no compiled `StarfallMiner.dll`, so this level-design work remains in a separate branch/checkout. At the user's request, this branch has **not been compiled, run, rendered in Godot, or exported**. The checks and screenshots recorded below belong to the earlier 0.3 migration commit on macOS, not to this level-design branch. The new C# changes cannot appear in a playable debug window until a build is allowed.
+
 Verified locally on 31 October 2026: Apple M1 / ARM64, macOS, Godot `4.7.2.stable.mono.official.ed1daf0bf`, .NET SDK `10.0.403` / runtime `10.0.14`. The incoming source is checkpointed at Git commit `ce1e4b6` in this project-local repository. The surrounding repository and its unrelated edits were left untouched.
 
 ## Implementation

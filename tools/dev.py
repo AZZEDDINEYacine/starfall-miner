@@ -20,7 +20,11 @@ def run(*args):
 
 
 def build():
-    run("dotnet", "build", "StarfallMiner.csproj", "-p:NuGetAudit=false")
+    args = ["dotnet", "build", "StarfallMiner.csproj", "-p:NuGetAudit=false"]
+    if os.name == "nt":
+        # The default NuGet.Config includes a Godot package feed in a macOS app bundle.
+        args.append("-p:RestoreConfigFile=NuGet.Windows.Config")
+    run(*args)
 
 
 def godot(*args):

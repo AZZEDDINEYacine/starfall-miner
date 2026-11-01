@@ -6,6 +6,10 @@
       "args": ["tools/dev.py", "build"], "problemMatcher": "$msCompile",
       "group": { "kind": "build", "isDefault": true }
     },
+    {
+      "label": "Build C# (Windows)", "type": "process", "command": "py",
+      "args": ["-3", "tools/dev.py", "build"], "problemMatcher": "$msCompile"
+    },
     { "label": "Test C#", "type": "process", "command": "python3", "args": ["tools/dev.py", "test"], "problemMatcher": "$msCompile", "group": "test" },
     { "label": "Test rendered", "type": "process", "command": "python3", "args": ["tools/dev.py", "test-rendered"], "problemMatcher": "$msCompile" },
     { "label": "Inspect game", "type": "process", "command": "python3", "args": ["tools/dev.py", "qa"], "problemMatcher": "$msCompile" },
