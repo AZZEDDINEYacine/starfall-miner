@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Verify the signed C# APK, including native 16 KB page compatibility."""
 import hashlib
+import configparser
 import json
 import os
 from pathlib import Path
@@ -27,7 +28,12 @@ def verify():
     sig = capture("android-signature.txt", tools / "apksigner", "verify", "--verbose", "--print-certs", apk)
     capture("android-alignment.txt", tools / "zipalign", "-c", "-P", "16", "4", apk)
     metadata = capture("android-badging.txt", tools / "aapt2", "dump", "badging", apk)
-    for expected in ["name='com.starfall.miner.demo'", "versionCode='3'", "versionName='0.3.0'", "minSdkVersion:'24'", "targetSdkVersion:'36'", "native-code: 'arm64-v8a'"]:
+    presets = configparser.RawConfigParser()
+    presets.read(ROOT / "export_presets.cfg")
+    options = presets["preset.1.options"]
+    version_code = options["version/code"]
+    version_name = options["version/name"].strip('"')
+    for expected in ["name='com.starfall.miner.demo'", f"versionCode='{version_code}'", f"versionName='{version_name}'", "minSdkVersion:'24'", "targetSdkVersion:'36'", "native-code: 'arm64-v8a'"]:
         if expected not in metadata:
             raise RuntimeError(f"Unexpected Android metadata: missing {expected}")
     alignments = {}

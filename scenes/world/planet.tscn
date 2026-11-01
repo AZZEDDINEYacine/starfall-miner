@@ -1,0 +1,19 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/MiningPlanet.cs" id="1"]
+[ext_resource type="Script" path="res://scripts/PlanetRenderer.cs" id="2"]
+[ext_resource type="Resource" path="res://resources/starfall_palette.tres" id="3"]
+[ext_resource type="Resource" path="res://resources/planet_generation.tres" id="4"]
+[ext_resource type="Resource" path="res://resources/planet_visual_style.tres" id="5"]
+[ext_resource type="Resource" path="res://resources/crafting_catalog.tres" id="6"]
+
+[node name="Planet" type="Node2D"]
+position = Vector2(270, 408)
+script = ExtResource("1")
+GenerationSettings = ExtResource("4")
+
+[node name="Renderer" type="Node2D" parent="."]
+script = ExtResource("2")
+Palette = ExtResource("3")
+Style = ExtResource("5")
+Catalog = ExtResource("6")

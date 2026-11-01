@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="PlanetVisualStyle" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/PlanetVisualStyle.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+Id = "circuit"
+Title = "CIRCUIT"
+Description = "Fine embedded traces"
+Treatment = 15
+TileSize = 16.0
+OreColors = PackedColorArray(0.20784, 0.30196, 0.28627, 1, 0.20784, 0.30196, 0.28627, 1, 0.20784, 0.30196, 0.28627, 1, 0.20784, 0.30196, 0.28627, 1, 0.20784, 0.30196, 0.28627, 1)
+DamagedColors = PackedColorArray(0.71373, 0.84706, 0.80784, 1, 0.71373, 0.84706, 0.80784, 1, 0.71373, 0.84706, 0.80784, 1, 0.71373, 0.84706, 0.80784, 1, 0.71373, 0.84706, 0.80784, 1)
+Backdrop = Color(0.02, 0.03, 0.04, 1)
+StarTint = Color(0.71373, 0.84706, 0.80784, 1)
+EdgeTint = Color(0.71373, 0.84706, 0.80784, 1)
+GlowStrength = 0.08

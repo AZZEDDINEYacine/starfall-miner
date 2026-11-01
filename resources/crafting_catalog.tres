@@ -1,0 +1,132 @@
+[gd_resource type="Resource" script_class="CraftingCatalog" load_steps=11 format=3]
+
+[ext_resource type="Script" path="res://scripts/CraftingCatalog.cs" id="1"]
+[ext_resource type="Script" path="res://scripts/EquipmentBlueprint.cs" id="2"]
+
+[sub_resource type="Resource" id="recipe_0"]
+script = ExtResource("2")
+Id = "lance"
+Title = "Photon lance"
+Description = "Low-power single-block beam. Cheap to service."
+Drone = false
+Type = 0
+Rank = 1
+Credits = 450.0
+Titanium = 2
+Iridium = 0
+Aether = 0
+Power = 1
+FireRate = 1
+Range = 245.0
+
+[sub_resource type="Resource" id="recipe_1"]
+script = ExtResource("2")
+Id = "nova"
+Title = "Nova cannon"
+Description = "Slow shell; compact blast clears a local seam."
+Drone = false
+Type = 1
+Rank = 1
+Credits = 600.0
+Titanium = 4
+Iridium = 0
+Aether = 0
+Power = 1
+FireRate = 1
+Range = 245.0
+
+[sub_resource type="Resource" id="recipe_2"]
+script = ExtResource("2")
+Id = "ion"
+Title = "Ion chain"
+Description = "Arcs across three adjacent mineral blocks."
+Drone = false
+Type = 2
+Rank = 2
+Credits = 4800.0
+Titanium = 3
+Iridium = 3
+Aether = 1
+Power = 1
+FireRate = 1
+Range = 245.0
+
+[sub_resource type="Resource" id="recipe_3"]
+script = ExtResource("2")
+Id = "scout"
+Title = "Scout drone"
+Description = "Independent miner. Recall to fit a spare weapon."
+Drone = true
+Type = 0
+Rank = 1
+Credits = 900.0
+Titanium = 4
+Iridium = 0
+Aether = 0
+Power = 0.55
+FireRate = 0.75
+Range = 180.0
+
+[sub_resource type="Resource" id="recipe_4"]
+script = ExtResource("2")
+Id = "surveyor"
+Title = "Survey drone"
+Description = "Faster fire and a longer mining reach."
+Drone = true
+Type = 1
+Rank = 2
+Credits = 4200.0
+Titanium = 5
+Iridium = 3
+Aether = 0
+Power = 0.8
+FireRate = 0.85
+Range = 220.0
+
+[sub_resource type="Resource" id="recipe_5"]
+script = ExtResource("2")
+Id = "atlas"
+Title = "Atlas drone"
+Description = "Industrial miner. One powerful weapon mount."
+Drone = true
+Type = 2
+Rank = 3
+Credits = 12000.0
+Titanium = 8
+Iridium = 6
+Aether = 2
+Power = 1.0
+FireRate = 1.0
+Range = 245.0
+
+[sub_resource type="Resource" id="recipe_6"]
+script = ExtResource("2")
+Id = "nova_wave"
+Title = "Nova wave"
+Description = "Expanding radial front; strongest at the center."
+Type = 3
+Rank = 2
+Credits = 6400.0
+Titanium = 8
+Iridium = 4
+Aether = 2
+
+[sub_resource type="Resource" id="recipe_7"]
+script = ExtResource("2")
+Id = "bore_laser"
+Title = "Bore laser"
+Description = "Two-block armor cutter. Bonus vs rare deposits."
+Type = 4
+Rank = 3
+Credits = 9000.0
+Titanium = 10
+Iridium = 6
+Aether = 3
+
+[resource]
+script = ExtResource("1")
+Recipes = Array[ExtResource("2")]([SubResource("recipe_0"), SubResource("recipe_1"), SubResource("recipe_2"), SubResource("recipe_3"), SubResource("recipe_4"), SubResource("recipe_5"), SubResource("recipe_6"), SubResource("recipe_7")])
+MaterialNames = PackedStringArray("Titanium", "Iridium", "Aether core")
+MaterialColors = PackedColorArray(0.76, 0.89, 0.92, 1, 0.87, 0.61, 1, 1, 1, 0.88, 0.63, 1)
+MarketPrices = PackedInt32Array(480, 1800, 6400)
+RankSectors = PackedInt32Array(1, 2, 4, 7)

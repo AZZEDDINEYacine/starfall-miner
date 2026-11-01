@@ -1,0 +1,38 @@
+[gd_resource type="Resource" script_class="PlanetGenerationSettings" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/PlanetGenerationSettings.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+RadiusGrowthPerSector = 0.12
+MaximumExtraRadius = 0.8
+SurfaceNoiseMin = -0.5
+SurfaceNoiseMax = 0.55
+GoldThreshold = 0.06
+CrystalThreshold = 0.085
+VolatileThreshold = 0.12
+MinimumVolatileDistance = 2.5
+ToughnessGrowth = 1.27
+RewardGrowth = 1.19
+BaseHp = 4.6
+HpDepthBonus = 0.48
+GoldHpMultiplier = 1.3
+CrystalHpMultiplier = 1.15
+VolatileHpMultiplier = 0.65
+CoreHpMultiplier = 10.0
+StoneValue = 1.5
+GoldValue = 6.0
+OtherOreValue = 3.0
+CoreValueMultiplier = 20.0
+SectorHealthStep = 0.38
+SectorValueStep = 0.07
+TitaniumDepth = 0.35
+IridiumDepth = 0.60
+AetherDepth = 0.82
+TitaniumChance = 0.11
+IridiumChance = 0.08
+AetherChance = 0.05
+SectorHealthPower = 1.45
+TitaniumHardness = 2.8
+IridiumHardness = 4.5
+AetherHardness = 7.0
