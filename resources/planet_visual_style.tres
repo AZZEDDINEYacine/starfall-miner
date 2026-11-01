@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="PlanetVisualStyle" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/PlanetVisualStyle.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+Id = "classic"
+Title = "ORIGINAL"
+Description = "Original flat pixel design"
+TileSize = 14.0
+DamageBrightnessExponent = 0.7

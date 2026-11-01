@@ -68,15 +68,39 @@ public partial class QaBridge : Node
             engine = Engine.GetVersionInfo()["string"].AsString(), language = "C#", assembly = typeof(Main).Assembly.GetName().Name,
             credits = _game.Credits, flux = _game.Flux, sector = _game.Sector, weapon = _game.Weapon,
             levels = _game.Levels, auto = _game.AutoMode, paused = _game.Paused, muted = _game.Muted,
+            engineering_rank = _game.EngineeringRank, drone_bays = _game.DroneBays,
+            materials = _game.Equipment.Materials,
+            owned_weapons = _game.Equipment.Weapons.Select(w => new { id = w.Id, type = w.Type, level = w.Level }).ToArray(),
+            drones = _game.Equipment.Drones.Select(d => new { id = d.Id, type = d.Type, level = d.Level, weapon_id = d.WeaponId, docked = d.Docked, recalling = d.Recalling, x = d.Position.X, y = d.Position.Y }).ToArray(),
+            ship_weapon_id = _game.Equipment.ShipWeaponId,
+            ship_hardpoints = _game.ShipHardpoints, ship_mounts = _game.Equipment.MountedShipCount,
+            ship_aux_weapon_ids = _game.Equipment.ShipAuxWeaponIds,
+            visible_ship_previews = _game.Hud.FindChildren("*", "Control", true, false).OfType<ShipSchematic>().Count(c => c.IsVisibleInTree()),
+            waves = _game.Waves.Count,
+            objective = _game.NextObjective,
             blocks = _game.Planet.Blocks.Count, planet_id = _game.Planet.GetInstanceId(),
+            planet_hp = _game.Planet.Blocks.Values.Sum(b => b.Hp),
+            visual_style = _game.CurrentVisualStyle.Id, visual_style_index = _game.VisualStyleIndex,
+            visual_styles = _game.VisualStyles.Select(s => new { id = s.Id, title = s.Title }).ToArray(),
             ship_x = _game.ShipPosition.X, ship_y = _game.ShipPosition.Y,
-            touch_steer = _game.Controls.JoystickActive, steer_id = _game.Controls.JoystickId,
-            touch_fire = _game.Controls.FireHeld, fire_id = _game.Controls.FireId,
+            pointer_id = _game.Controls.PointerId, navigating = _game.Navigation.Active,
+            pointer_x = _game.Controls.PointerPosition.X, pointer_y = _game.Controls.PointerPosition.Y,
+            ship_speed = _game.ShipVelocity.Length(), mining_stand_off = _game.FlightSettings.MiningStandOff,
+            clearing_path = _game.Navigation.ClearingPath,
+            destination_x = _game.Navigation.Destination.X, destination_y = _game.Navigation.Destination.Y,
             pending_debris = _game.Debris.Count, projectiles = _game.Projectiles.Count,
             width = _game.View.Size.X, height = _game.View.Size.Y, panel = _game.Hud.PanelKind,
+            window_width = GetWindow().Size.X, window_height = GetWindow().Size.Y,
             transition = _game.TransitionLeft, layout_revision = _game.View.LayoutRevision, buttons,
-            stick = new { x = _game.Controls.StickCenter.X, y = _game.Controls.StickCenter.Y },
-            fire = new { x = _game.Controls.FireCenter.X, y = _game.Controls.FireCenter.Y },
+            layout_auto = _game.View.LayoutAutoMode,
+            hud_alpha = _game.Hud.Modulate.A, camera_scale = _game.View.CameraScale,
+            activation_duration = _game.Hud.ActivationDuration, activation_running = _game.Hud.ActivationRunning,
+            hologram_channels = _game.Hud.Channels.Select(c => new { name = c.Name.ToString(), brightness = c.Brightness,
+                age = c.Age, order = c.Order, processing = c.IsProcessing(), alpha = c.Modulate.A, x = c.Position.X, y = c.Position.Y }).ToArray(),
+            camera_x = _game.View.CameraFocus.X, camera_y = _game.View.CameraFocus.Y,
+            ship_screen_x = _game.View.WorldToScreen(_game.ShipPosition).X, ship_screen_y = _game.View.WorldToScreen(_game.ShipPosition).Y,
+            aim_x = _game.Navigation.AimDirection.X, aim_y = _game.Navigation.AimDirection.Y,
+            mined = _game.TotalMined, shot_cooldown = _game.FiringCooldown,
             save_path = _game.Persistence.Path
         };
     }
@@ -92,6 +116,126 @@ public partial class QaBridge : Node
             {
                 case "state": break;
                 case "freeze": _game.SetProcess(!request.GetProperty("value").GetBoolean()); break;
+                case "legacy_controls_fixture":
+                    _game.Equipment = EquipmentState.Legacy(_game.Sector, _game.Weapon);
+                    _game.Hud.RequestLayout();
+                    break;
+                case "economy_fixture":
+                    _game.ReleaseControls();
+                    _game.Equipment = EquipmentState.Fresh();
+                    _game.Equipment.HighestSector = 4;
+                    _game.Equipment.Materials = [20, 10, 3];
+                    _game.Credits = 50000;
+                    _game.Weapon = 0;
+                    Array.Clear(_game.Levels);
+                    _game.WarpTimer = 0;
+                    _game.Planet.Generate(1);
+                    _game.PlaceShipAtOrbit();
+                    _game.Projectiles.Clear(); _game.Debris.Clear();
+                    _game.Paused = false;
+                    _game.Hud.ClosePanel();
+                    _game.View.PlaceWorld(true);
+                    break;
+                case "drone_mining_trial":
+                    _game.Paused = false;
+                    _game.WarpTimer = 0;
+                    _game.SetAuto(false);
+                    _game.Hud.ClosePanel();
+                    _game.ShotTimer = 999;
+                    _game.Planet.Blocks.Clear();
+                    _game.Planet.Blocks[Vector2I.Zero] = new OreBlock { Hp = 100, MaxHp = 100, Value = 3, Material = 0, MaterialAmount = 2 };
+                    _game.Planet.Blocks[new Vector2I(0, 12)] = new OreBlock { Hp = 10000, MaxHp = 10000, Value = 3 };
+                    _game.Planet.ClearSent = false;
+                    _game.Planet.TotalBlocks = 2;
+                    _game.ShipPosition = Main.Center + Vector2.Left * 90;
+                    foreach (var drone in _game.Equipment.Drones) { drone.Position = _game.ShipPosition; drone.ShotTimer = 0; drone.Recalling = drone.Docked = false; }
+                    _game.View.PlaceWorld(true);
+                    _game.Planet.NotifyTilesChanged();
+                    break;
+                case "fleet_cruise_trial":
+                    _game.Paused = false; _game.WarpTimer = 0;
+                    _game.SetAuto(false); _game.Hud.ClosePanel();
+                    _game.Planet.Generate(1); _game.PlaceShipAtOrbit();
+                    _game.ShotTimer = 999;
+                    _game.Projectiles.Clear(); _game.Waves.Clear(); _game.Debris.Clear();
+                    foreach (var miner in _game.Equipment.Drones) _game.DeployDrone(miner.Id);
+                    _game.View.PlaceWorld(true);
+                    break;
+                case "deep_deposits_fixture":
+                    _game.ReleaseControls(); _game.Paused = false; _game.WarpTimer = 0;
+                    _game.SetAuto(false); _game.Hud.ClosePanel();
+                    _game.Planet.Blocks.Clear(); _game.Planet.ClearSent = false;
+                    for (int y = -11; y <= 11; y++)
+                    for (int x = 0; x < 12; x++)
+                        _game.Planet.Blocks[new Vector2I(x, y)] = new OreBlock { Hp = 12, MaxHp = 12, Value = 1.5 };
+                    for (int mineral = 0; mineral < 3; mineral++)
+                    {
+                        var ore = _game.Planet.Blocks[new Vector2I(0, (mineral - 1) * 3)];
+                        ore.Material = mineral; ore.MaterialAmount = 1;
+                    }
+                    _game.ShipPosition = Main.Center + Vector2.Left * 70;
+                    _game.ShipAngle = 0;
+                    _game.Planet.TotalBlocks = _game.Planet.Blocks.Count;
+                    _game.View.PlaceWorld(true); _game.Planet.NotifyTilesChanged();
+                    break;
+                case "nova_wave_trial":
+                    _game.Paused = false; _game.WarpTimer = 0;
+                    _game.SetAuto(true); _game.Hud.ClosePanel();
+                    _game.Equipment.ShipAuxWeaponIds = [0, 0];
+                    foreach (var miner in _game.Equipment.Drones) { miner.Recalling = miner.Docked = true; }
+                    var waveWeapon = _game.Equipment.Weapons.First(w => w.Type == 3);
+                    _game.EquipShip(waveWeapon.Id);
+                    _game.Planet.Blocks.Clear(); _game.Planet.ClearSent = false;
+                    foreach (int x in new[] { 0, 4, 7 }) _game.Planet.Blocks[new Vector2I(x, 0)] = new OreBlock { Hp = 100, MaxHp = 100, Value = 1 };
+                    _game.ShipPosition = Main.Center + Vector2.Left * 80;
+                    _game.TargetKey = Vector2I.Zero; _game.ShotTimer = 0;
+                    _game.Waves.Clear(); _game.Projectiles.Clear(); _game.Debris.Clear();
+                    _game.Fire(); _game.View.PlaceWorld(true); _game.Planet.NotifyTilesChanged();
+                    break;
+                case "sparse_autopilot":
+                    // Isolated QA reproduction of a final outer-edge block, never player data.
+                    _game.ReleaseControls();
+                    _game.SetAuto(true);
+                    _game.WarpTimer = _game.OverdriveLeft = 0;
+                    _game.ShotTimer = 0;
+                    _game.Weapon = 0;
+                    Array.Clear(_game.Levels);
+                    _game.AimKey = _game.TargetKey = MiningPlanet.NoTarget;
+                    _game.Projectiles.Clear(); _game.Debris.Clear(); _game.Beams.Clear();
+                    _game.Planet.Blocks.Clear();
+                    _game.Planet.Blocks[new Vector2I(26, 0)] = new OreBlock { Hp = 5, MaxHp = 5, Value = 3 };
+                    _game.Planet.TotalBlocks = 1;
+                    _game.Planet.ClearSent = false;
+                    _game.Planet.NotifyTilesChanged();
+                    _game.ShipPosition = Main.Center + Vector2.Left * 600;
+                    _game.ShipVelocity = Vector2.Zero;
+                    _game.View.PlaceWorld(true);
+                    _game.Hud.Refresh();
+                    break;
+                case "activation_frame":
+                    float activationAge = Math.Clamp(request.GetProperty("seconds").GetSingle(), 0, _game.Hud.ActivationDuration);
+                    foreach (var channel in _game.Hud.Channels) { channel.Seek(activationAge); channel.SetProcess(false); }
+                    _game.ModeStatus.Seek(activationAge);
+                    _game.ModeStatus.SetProcess(false);
+                    break;
+                case "activation_replay":
+                    foreach (var channel in _game.Hud.Channels) channel.Activate(true);
+                    _game.ModeStatus.Play(_game.AutoMode);
+                    break;
+                case "advance_view":
+                    float seconds = Math.Clamp(request.GetProperty("seconds").GetSingle(), 0, 2);
+                    for (float remaining = seconds; remaining > 0; remaining -= 1f / 60)
+                    {
+                        float step = Math.Min(remaining, 1f / 60);
+                        _game.TransitionLeft = Math.Max(0, _game.TransitionLeft - step);
+                        _game.View.PlaceWorld(false, step);
+                    }
+                    break;
+                case "advance_simulation":
+                    float simulation = Math.Clamp(request.GetProperty("seconds").GetSingle(), 0, 5);
+                    for (float remaining = simulation; remaining > 0; remaining -= 1f / 60)
+                        _game.Step(Math.Min(remaining, 1f / 60));
+                    break;
                 case "resize":
                     GetWindow().Size = new Vector2I(Math.Clamp(request.GetProperty("width").GetInt32(), 320, 1920), Math.Clamp(request.GetProperty("height").GetInt32(), 320, 1920));
                     break;
@@ -114,6 +258,25 @@ public partial class QaBridge : Node
                         Pressed = request.GetProperty("pressed").GetBoolean(), Device = (int)InputEvent.DeviceIdEmulation
                     }) GetViewport().PushInput(mouse, true);
                     break;
+                case "desktop_mouse":
+                    // Enter through Input, rather than bypassing window scaling and input emulation.
+                    var windowPoint = GetViewport().GetFinalTransform() * Point(request);
+                    bool down = request.GetProperty("pressed").GetBoolean();
+                    using (var desktopMouse = new InputEventMouseButton
+                    {
+                        Position = windowPoint, GlobalPosition = windowPoint, WindowId = GetWindow().GetWindowId(),
+                        ButtonIndex = MouseButton.Left, ButtonMask = down ? MouseButtonMask.Left : 0,
+                        Pressed = down, Device = 0
+                    }) Input.ParseInputEvent(desktopMouse);
+                    break;
+                case "desktop_motion":
+                    var motionPoint = GetViewport().GetFinalTransform() * Point(request);
+                    using (var desktopMotion = new InputEventMouseMotion
+                    {
+                        Position = motionPoint, GlobalPosition = motionPoint, WindowId = GetWindow().GetWindowId(),
+                        ButtonMask = MouseButtonMask.Left, Device = 0
+                    }) Input.ParseInputEvent(desktopMotion);
+                    break;
                 case "lifecycle":
                     _game.Notification(request.GetProperty("event").GetString() switch
                     {
@@ -131,6 +294,8 @@ public partial class QaBridge : Node
                     // macOS can skip display frames for occluded windows. Force an
                     // actual renderer pass so inspection also works behind the IDE.
                     await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                    foreach (var child in _game.View.Stage.GetChildren())
+                        if (child is CanvasItem item) item.QueueRedraw();
                     RenderingServer.ForceDraw(false);
                     using (var image = GetViewport().GetTexture().GetImage())
                     {

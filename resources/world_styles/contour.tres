@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="PlanetVisualStyle" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/PlanetVisualStyle.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+Id = "contour"
+Title = "CONTOUR"
+Description = "Depth isolines"
+Treatment = 9
+TileSize = 16.0
+OreColors = PackedColorArray(0.25098, 0.33725, 0.36078, 1, 0.25098, 0.33725, 0.36078, 1, 0.25098, 0.33725, 0.36078, 1, 0.25098, 0.33725, 0.36078, 1, 0.25098, 0.33725, 0.36078, 1)
+DamagedColors = PackedColorArray(0.72157, 0.86275, 0.87451, 1, 0.72157, 0.86275, 0.87451, 1, 0.72157, 0.86275, 0.87451, 1, 0.72157, 0.86275, 0.87451, 1, 0.72157, 0.86275, 0.87451, 1)
+Backdrop = Color(0.02, 0.03, 0.04, 1)
+StarTint = Color(0.72157, 0.86275, 0.87451, 1)
+EdgeTint = Color(0.72157, 0.86275, 0.87451, 1)
+GlowStrength = 0.08

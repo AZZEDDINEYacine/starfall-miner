@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="PlanetVisualStyle" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/PlanetVisualStyle.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+Id = "monolith"
+Title = "MONOLITH"
+Description = "Large plate seams"
+Treatment = 13
+TileSize = 16.0
+OreColors = PackedColorArray(0.26667, 0.29020, 0.31373, 1, 0.26667, 0.29020, 0.31373, 1, 0.26667, 0.29020, 0.31373, 1, 0.26667, 0.29020, 0.31373, 1, 0.26667, 0.29020, 0.31373, 1)
+DamagedColors = PackedColorArray(0.82353, 0.85490, 0.89804, 1, 0.82353, 0.85490, 0.89804, 1, 0.82353, 0.85490, 0.89804, 1, 0.82353, 0.85490, 0.89804, 1, 0.82353, 0.85490, 0.89804, 1)
+Backdrop = Color(0.02, 0.03, 0.04, 1)
+StarTint = Color(0.82353, 0.85490, 0.89804, 1)
+EdgeTint = Color(0.82353, 0.85490, 0.89804, 1)
+GlowStrength = 0.08

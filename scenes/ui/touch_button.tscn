@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/TouchButton.cs" id="1"]
+
+[node name="TouchButton" type="Button"]
+focus_mode = 0
+mouse_default_cursor_shape = 2
+script = ExtResource("1")

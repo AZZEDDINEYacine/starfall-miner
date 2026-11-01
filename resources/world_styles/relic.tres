@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="PlanetVisualStyle" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/PlanetVisualStyle.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+Id = "relic"
+Title = "RELIC"
+Description = "Sandstone & old runes"
+Treatment = 7
+TileSize = 15.0
+DamageBrightnessExponent = 0.7
+OreColors = PackedColorArray(0.56078, 0.50196, 0.37647, 1, 0.78824, 0.66275, 0.30588, 1, 0.30196, 0.60784, 0.57255, 1, 0.69020, 0.41961, 0.31373, 1, 0.56863, 0.50980, 0.66667, 1)
+DamagedColors = PackedColorArray(0.94902, 0.90588, 0.74510, 1, 1.00000, 0.94902, 0.68235, 1, 0.78039, 0.96471, 0.87451, 1, 1.00000, 0.80000, 0.69804, 1, 0.93725, 0.88235, 1.00000, 1)
+Backdrop = Color(0.09020, 0.07451, 0.05490, 1)
+StarTint = Color(0.72549, 0.65490, 0.48235, 1)
+EdgeTint = Color(0.89020, 0.82745, 0.63137, 1)
+GlowStrength = 0.02

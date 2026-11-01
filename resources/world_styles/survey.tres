@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="PlanetVisualStyle" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/PlanetVisualStyle.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+Id = "survey"
+Title = "HOLO SURVEY"
+Description = "Wireframe & ore glyphs"
+Treatment = 4
+TileSize = 15.0
+DamageBrightnessExponent = 0.7
+OreColors = PackedColorArray(0.22353, 0.49412, 0.54510, 1, 0.87059, 0.77647, 0.47059, 1, 0.43922, 0.87451, 1.00000, 1, 0.95294, 0.54902, 0.61961, 1, 0.77647, 0.63137, 1.00000, 1)
+DamagedColors = PackedColorArray(0.74118, 0.98824, 1.00000, 1, 1.00000, 1.00000, 0.78824, 1, 0.94118, 1.00000, 1.00000, 1, 1.00000, 0.90196, 0.93333, 1, 1.00000, 0.94118, 1.00000, 1)
+Backdrop = Color(0.01569, 0.07059, 0.09412, 1)
+StarTint = Color(0.21961, 0.60392, 0.64314, 1)
+EdgeTint = Color(0.43137, 0.93333, 0.94118, 1)
+GlowStrength = 0.13

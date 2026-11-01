@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="PlanetVisualStyle" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/PlanetVisualStyle.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+Id = "radar"
+Title = "RADAR"
+Description = "Low ink scan plot"
+Treatment = 16
+TileSize = 16.0
+OreColors = PackedColorArray(0.20784, 0.30588, 0.32941, 1, 0.20784, 0.30588, 0.32941, 1, 0.20784, 0.30588, 0.32941, 1, 0.20784, 0.30588, 0.32941, 1, 0.20784, 0.30588, 0.32941, 1)
+DamagedColors = PackedColorArray(0.67451, 0.84314, 0.87843, 1, 0.67451, 0.84314, 0.87843, 1, 0.67451, 0.84314, 0.87843, 1, 0.67451, 0.84314, 0.87843, 1, 0.67451, 0.84314, 0.87843, 1)
+Backdrop = Color(0.02, 0.03, 0.04, 1)
+StarTint = Color(0.67451, 0.84314, 0.87843, 1)
+EdgeTint = Color(0.67451, 0.84314, 0.87843, 1)
+GlowStrength = 0.08
