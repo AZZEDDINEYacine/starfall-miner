@@ -10,7 +10,6 @@ public partial class Main : Node2D
     public const string SavePath = "user://starfall_save_v1.json";
     public static readonly string[] Weapons = ["Photon lance", "Nova cannon", "Ion chain"];
     public static readonly Color[] WeaponColors = [new("79f3ce"), new("ffb574"), new("b5a2ff")];
-    private static readonly string[] SectorNames = ["THE CINDER BELT", "AZURE DRIFT", "VIOLET REACH", "VERDANT ECHO"];
     private static readonly double[] UpgradeBase = [45, 60, 50], UpgradeGrowth = [1.62, 1.7, 1.67];
     private static readonly float[] BaseCooldown = [0.24f, 0.86f, 0.62f];
     private static readonly string[] Suffixes = ["", "K", "M", "B", "T", "Qa", "Qi"];
@@ -30,9 +29,11 @@ public partial class Main : Node2D
     public Vector2 ShipPosition = Center + new Vector2(-155, -150), ShipVelocity;
     public float ShipAngle, Clock, OrbitAngle = -2.2f;
     public double Credits = 80, TotalEarned, SessionCredits, IncomeRate, IncomeAccum;
-    public long Flux, TotalMined, SessionMined, SessionEnergy, LifetimeEnergy;
+    public long Flux, Iron, TotalMined, SessionMined, SessionEnergy, LifetimeEnergy;
     public int Sector = 1, Weapon;
     public int[] Levels { get; } = [0, 0, 0];
+    // Free weapon modules are earned on major planets; all three base weapons remain available.
+    public int[] WeaponTiers { get; } = [0, 0, 0];
     public bool AutoMode = true, Paused, Muted, FirstRun = true;
     public bool IsTest { get; private set; }
     public bool NoSave;
@@ -66,6 +67,10 @@ public partial class Main : Node2D
         AddChild(Sound);
         Planet.Generate(Sector);
         if (!NoSave) Persistence.Load(this);
+        if (FirstRun)
+        {
+            ShipPosition = Center + Vector2.FromAngle(OrbitAngle) * (Planet.SurfaceRadius(OrbitAngle) + 53);
+        }
         _visuals = new Visuals { Game = this };
         View.Stage.AddChild(_visuals);
         Controls = new FlightInput { Game = this };
@@ -179,7 +184,8 @@ public partial class Main : Node2D
         return MiningPlanet.NoTarget;
     }
 
-    public double DamageMultiplier => Math.Pow(1.46, Levels[0]) * (OverdriveLeft > 0 ? 1.5 : 1);
+    public double DamageMultiplier => Math.Pow(1.46, Levels[0]) *
+        (1 + WeaponTiers[Weapon] * 0.12) * (OverdriveLeft > 0 ? 1.5 : 1);
 
     public void Fire(bool manualTap = false)
     {
@@ -373,17 +379,20 @@ public partial class Main : Node2D
     {
         if (WarpTimer > 0) return;
         WarpTimer = WarpDuration;
-        double bonus = Math.Floor(150 * Math.Pow(1.22, Math.Min(Sector - 1, 500)));
-        Credits += bonus;
-        TotalEarned += bonus;
-        Flux += 5;
-        SessionCredits += bonus;
-        SessionEnergy += 5;
-        LifetimeEnergy += 5;
+        var reward = SectorDesign.RewardFor(Sector);
+        Credits += reward.Credits;
+        TotalEarned += reward.Credits;
+        Iron += reward.Iron;
+        Flux += reward.Energy;
+        SessionCredits += reward.Credits;
+        SessionEnergy += reward.Energy;
+        LifetimeEnergy += reward.Energy;
+        if (reward.WeaponIndex >= 0) WeaponTiers[reward.WeaponIndex]++;
         Projectiles.Clear();
         Sound.Play("warp");
         AddRing(Center, 30, 260, WeaponColors[2], 1.4f);
-        Toast($"SECTOR {Sector:00} COMPLETE", $"+{Compact(bonus)} credits  ·  +5 energy  ·  preparing warp", WeaponColors[0], 2.7f);
+        string module = reward.WeaponIndex >= 0 ? $"  ·  {Weapons[reward.WeaponIndex]} MK {WeaponTiers[reward.WeaponIndex] + 1}" : "";
+        Toast($"{Planet.Profile.Name} COMPLETE", $"+{Compact(reward.Credits)} CR  ·  +{reward.Iron} iron  ·  +{reward.Energy} energy{module}", WeaponColors[0], 3.8f);
         Hud.Refresh();
         SaveProgress();
     }
@@ -393,11 +402,11 @@ public partial class Main : Node2D
         Sector++;
         Planet.Generate(Sector);
         OrbitAngle = -2.2f;
-        ShipPosition = Center + Vector2.FromAngle(OrbitAngle) * 205;
+        ShipPosition = Center + Vector2.FromAngle(OrbitAngle) * (Planet.SurfaceRadius(OrbitAngle) + 53);
         AimKey = MiningPlanet.NoTarget;
         ShotTimer = 0.4f;
         Projectiles.Clear();
-        Toast($"ENTERING SECTOR {Sector:00}", SectorNames[(Sector - 1) % 4] + "  /  tougher ore, richer rewards", WeaponColors[2], 2.8f);
+        Toast($"SECTOR {Sector:00} / {Planet.Profile.Name}", Planet.Profile.Lesson, WeaponColors[2], 3.2f);
         Hud.Refresh();
         SaveProgress();
     }
@@ -490,9 +499,10 @@ public partial class Main : Node2D
     public void ResetProgress()
     {
         Credits = 80;
-        Flux = TotalMined = SessionMined = SessionEnergy = LifetimeEnergy = 0;
+        Flux = Iron = TotalMined = SessionMined = SessionEnergy = LifetimeEnergy = 0;
         Sector = 1;
         Array.Clear(Levels);
+        Array.Clear(WeaponTiers);
         Weapon = 0;
         TotalEarned = SessionCredits = IncomeRate = IncomeAccum = 0;
         WarpTimer = OverdriveLeft = OverdriveCooldown = 0;
@@ -500,7 +510,7 @@ public partial class Main : Node2D
         Planet.Generate(1);
         Projectiles.Clear(); Particles.Clear(); Beams.Clear(); Rings.Clear(); Debris.Clear();
         OrbitAngle = -2.2f;
-        ShipPosition = Center + Vector2.FromAngle(OrbitAngle) * 205;
+        ShipPosition = Center + Vector2.FromAngle(OrbitAngle) * (Planet.SurfaceRadius(OrbitAngle) + 53);
         AimKey = TargetKey = MiningPlanet.NoTarget;
         ShotTimer = 0.3f;
         TapTimer = 0;

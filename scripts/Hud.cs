@@ -125,7 +125,7 @@ public partial class Hud : Control
     private void BuildAuto(Vector2 v)
     {
         Label(this, "STARFALL", new Rect2(24, 22, v.X - 116, 34), 24, Ink, _mono);
-        Label(this, $"AUTO MINING  /  SECTOR {Game.Sector:00}", new Rect2(24, 61, v.X - 116, 24), 11, Mint, _mono);
+        Label(this, $"SECTOR {Game.Sector:00}  /  {Game.Planet.Profile.Name}", new Rect2(24, 61, v.X - 116, 24), 11, Mint, _mono);
         Button(this, "pause", "II", new Rect2(v.X - 80, 25, 56, 56), Game.TogglePause, 18);
         var cargo = Button(this, "cargo_top", "", new Rect2(24, 106, v.X - 48, 70), () => OpenPanel("cargo"));
         Label(cargo, "CREDITS", new Rect2(16, 8, 230, 18), 10, MutedInk, _mono);
@@ -147,7 +147,7 @@ public partial class Hud : Control
     private void BuildManual(Vector2 v)
     {
         Button(this, "mode", "←  AUTO PILOT", new Rect2(24, 18, 190, 62), () => Game.SetAuto(true), 15, Mint);
-        if (v.X > 830) Label(this, $"SECTOR {Game.Sector:00}", new Rect2(238, 25, 196, 42), 13, MutedInk, _mono);
+        if (v.X > 830) Label(this, $"{Game.Planet.Profile.Name}", new Rect2(238, 25, 196, 42), 12, MutedInk, _mono);
         float statsX = Mathf.Max(230, v.X - 450), statsW = Mathf.Max(210, v.X - 106 - statsX);
         var cargo = Button(this, "cargo", "", new Rect2(statsX, 18, statsW, 62), () => OpenPanel("cargo"));
         Label(cargo, "CR", new Rect2(12, 7, 40, 16), 9, MutedInk, _mono);
@@ -170,10 +170,10 @@ public partial class Hud : Control
     private void BuildToast(Vector2 v)
     {
         float width = Mathf.Min(v.X - 72, 460), y = Game.AutoMode ? 230 : v.Y - 184;
-        _toastPanel = Panel(this, new Rect2((v.X - width) * 0.5f, y, width, 62));
+        _toastPanel = Panel(this, new Rect2((v.X - width) * 0.5f, y, width, 76));
         _toastPanel.ZIndex = 15;
         _toastTitle = Label(_toastPanel, _noticeTitle, new Rect2(14, 7, width - 28, 22), 12, _noticeColor, _mono);
-        _toastSubtitle = Label(_toastPanel, _noticeSubtitle, new Rect2(14, 30, width - 28, 25), 11, MutedInk);
+        _toastSubtitle = Label(_toastPanel, _noticeSubtitle, new Rect2(14, 29, width - 28, 42), 11, MutedInk);
         _toastSubtitle.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         _toastPanel.Visible = _toastLeft > 0;
     }
@@ -225,7 +225,7 @@ public partial class Hud : Control
             int index = i;
             var button = Button(card, $"weapon_{i}", "", new Rect2(22 + i * (slotW + 10), 108, slotW, compact ? 72 : 90), () => Game.SetWeapon(index), 12);
             Label(button, names[i], new Rect2(12, 12, slotW - 24, 23), 13, Main.WeaponColors[i], _mono);
-            Label(button, modes[i], new Rect2(12, 39, slotW - 24, 20), 10, MutedInk, _mono);
+            Label(button, $"{modes[i]}  /  MK {Game.WeaponTiers[i] + 1}", new Rect2(12, 39, slotW - 24, 20), 10, MutedInk, _mono);
             _weaponButtons.Add(button);
         }
         float titleY = compact ? 190 : 220, rowHeight = compact ? 58 : 82, top = titleY + 34;
@@ -245,10 +245,10 @@ public partial class Hud : Control
     private void BuildCargo(Panel card, float width, float height)
     {
         Label(card, "RECOVERED BY THE SHIP", new Rect2(22, 76, width - 44, 22), 11, Mint, _mono);
-        string[] labels = ["THIS FLIGHT / CREDITS", "THIS FLIGHT / ENERGY", "BLOCKS MINED", "LIFETIME / CREDITS", "LIFETIME / ENERGY"];
+        string[] labels = ["THIS FLIGHT / CREDITS", "THIS FLIGHT / ENERGY", "BLOCKS MINED", "LIFETIME / CREDITS", "LIFETIME / ENERGY", "IRON FROM SECTORS"];
         for (int i = 0; i < labels.Length; i++)
         {
-            float y = 118 + i * 52;
+            float y = 108 + i * 48;
             Label(card, labels[i], new Rect2(22, y, width - 196, 31), 11, MutedInk, _mono);
             var value = Label(card, "", new Rect2(width - 178, y, 154, 31), 21, i is 0 or 3 ? Gold : i is 1 or 4 ? Lilac : Ink, _mono);
             value.HorizontalAlignment = HorizontalAlignment.Right;
@@ -300,13 +300,14 @@ public partial class Hud : Control
             _upgradeCosts[i].AddThemeColorOverride("font_color", Game.Credits >= cost ? Gold : MutedInk);
             _upgradeLevels[i].Text = $"LV {Game.Levels[i]} / {UpgradeBonuses[i]}";
         }
-        if (_statValues.Count == 5)
+        if (_statValues.Count == 6)
         {
             _statValues[0].Text = Main.Compact(Game.SessionCredits);
             _statValues[1].Text = Main.Compact(Game.SessionEnergy);
             _statValues[2].Text = Main.Compact(Game.TotalMined);
             _statValues[3].Text = Main.Compact(Game.TotalEarned);
             _statValues[4].Text = Main.Compact(Game.LifetimeEnergy);
+            _statValues[5].Text = Main.Compact(Game.Iron);
         }
         if (_boostButton != null) _boostButton.Text = Game.OverdriveLeft > 0 ? $"BOOST {Mathf.CeilToInt(Game.OverdriveLeft)}s" : Game.OverdriveCooldown > 0 ? $"{Mathf.CeilToInt(Game.OverdriveCooldown)}s" : "BOOST / 5 E";
         QueueRedraw();

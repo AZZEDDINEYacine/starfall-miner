@@ -22,8 +22,8 @@ public sealed class SaveStore(string path)
         {
             var data = new SaveData
             {
-                Version = 1, Credits = game.Credits, Flux = game.Flux, Sector = game.Sector,
-                Weapon = game.Weapon, Levels = (int[])game.Levels.Clone(), Auto = game.AutoMode, Muted = game.Muted,
+                Version = 1, Credits = game.Credits, Flux = game.Flux, Iron = game.Iron, Sector = game.Sector,
+                Weapon = game.Weapon, Levels = (int[])game.Levels.Clone(), WeaponTiers = (int[])game.WeaponTiers.Clone(), Auto = game.AutoMode, Muted = game.Muted,
                 TotalEarned = game.TotalEarned, TotalMined = game.TotalMined, Rate = game.IncomeRate,
                 Timestamp = Time.GetUnixTimeFromSystem(), TotalBlocks = game.Planet.TotalBlocks,
                 Cleared = game.WarpTimer > 0, OverdriveCooldown = game.OverdriveCooldown,
@@ -67,14 +67,15 @@ public sealed class SaveStore(string path)
         try
         {
             var data = JsonSerializer.Deserialize<SaveData>(FileAccess.GetFileAsString(Path), Options);
-            if (data == null || data.Version != 1 || data.Levels?.Length != 3 || data.Tiles == null ||
+            if (data == null || data.Version != 1 || data.Levels?.Length != 3 ||
+                data.WeaponTiers is { Length: not 3 } || data.Iron < 0 || data.Tiles == null ||
                 data.Tiles.Count == 0 && !data.Cleared) throw new JsonException("Incomplete v1 save.");
             // Validate the entire payload before changing the live game or claiming catch-up.
             // Silently skipping a bad tile or pickup could destroy or duplicate its reward.
             var restored = new Dictionary<Vector2I, OreBlock>(data.Tiles.Count);
             foreach (var tile in data.Tiles)
             {
-                if (tile == null || Math.Abs((long)tile.X) > 10 || Math.Abs((long)tile.Y) > 10 ||
+                if (tile == null || Math.Abs((long)tile.X) > 23 || Math.Abs((long)tile.Y) > 23 ||
                     !Finite(tile.Hp, tile.MaxHp, tile.Value) || tile.Hp <= 0 || tile.MaxHp <= 0 || tile.Value < 0 ||
                     !restored.TryAdd(new Vector2I(tile.X, tile.Y), new OreBlock
                     {
@@ -102,9 +103,11 @@ public sealed class SaveStore(string path)
             game.FirstRun = false;
             game.Credits = Math.Max(0, data.Credits);
             game.Flux = Math.Max(0, data.Flux);
+            game.Iron = Math.Max(0, data.Iron);
             game.Sector = Math.Clamp(data.Sector, 1, 1000000);
             game.Weapon = Math.Clamp(data.Weapon, 0, 2);
             for (int i = 0; i < 3; i++) game.Levels[i] = Math.Clamp(data.Levels[i], 0, 500);
+            for (int i = 0; i < 3; i++) game.WeaponTiers[i] = data.WeaponTiers?.Length == 3 ? Math.Clamp(data.WeaponTiers[i], 0, 500) : 0;
             game.AutoMode = data.Auto;
             game.Muted = data.Muted;
             game.Sound.Enabled = !game.Muted;
@@ -122,6 +125,13 @@ public sealed class SaveStore(string path)
                 foreach (var pair in restored) game.Planet.Blocks.Add(pair.Key, pair.Value);
                 game.Planet.TotalBlocks = Math.Max(restored.Count, data.TotalBlocks ?? game.Planet.TotalBlocks);
                 game.Planet.QueueRedraw();
+            }
+            // An older cleared-sector save may place the ship inside a new,
+            // larger layout. Move only those ships that would be trapped.
+            if (game.Planet.ContainsPoint(game.ShipPosition - Main.Center, 9))
+            {
+                float angle = (game.ShipPosition - Main.Center).Angle();
+                game.ShipPosition = Main.Center + Vector2.FromAngle(angle) * (game.Planet.SurfaceRadius(angle) + 53);
             }
             game.WarpTimer = 0;
             game.Projectiles.Clear();
@@ -158,8 +168,10 @@ public sealed class SaveStore(string path)
         public int Version;
         public double Credits = 80;
         public long Flux;
+        public long Iron;
         public int Sector = 1, Weapon;
         public int[]? Levels;
+        public int[]? WeaponTiers;
         public bool Auto = true, Muted;
         public double TotalEarned, Rate;
         public long TotalMined, LifetimeEnergy;

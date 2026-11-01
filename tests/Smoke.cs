@@ -94,6 +94,26 @@ public partial class Smoke : Node
         _game.Planet.Generate(1);
         Check(SameTiles(original, _game.Planet.Blocks), "Sector generation is deterministic");
         Check(_game.Planet.Blocks.Values.Select(b => b.Kind).Distinct().Count() == 5, "Five ore types exist");
+        var preview = new MiningPlanet();
+        var names = new HashSet<string>();
+        double previousReward = 0;
+        for (int sector = 1; sector <= SectorDesign.CampaignLength; sector++)
+        {
+            preview.Generate(sector);
+            var profile = preview.Profile;
+            var reward = SectorDesign.RewardFor(sector);
+            Check(names.Add(profile.Name) && preview.Blocks.Count > 400 && preview.Blocks.ContainsKey(Vector2I.Zero) &&
+                preview.Blocks.Keys.Any(key => Math.Abs(key.X) > 10 || Math.Abs(key.Y) > 10),
+                $"Sector {sector} has a distinct named, mineable large planet");
+            Check(reward.Credits > previousReward && reward.Iron > 0 && reward.Energy > 0,
+                $"Sector {sector} pays a larger completion reward");
+            previousReward = reward.Credits;
+        }
+        preview.Free();
+        Check(SectorDesign.RewardFor(5).WeaponIndex == 1 && SectorDesign.RewardFor(9).WeaponIndex == 2 &&
+            SectorDesign.RewardFor(13).WeaponIndex == 0, "Milestone planets award upgrades for all three weapons");
+        Check(2 * _game.Planet.Profile.Radius * MiningPlanet.Cell * _game.View.CameraScale > _game.View.Size.X - 48,
+            "Planet diameter exceeds the visible auto-mining area");
         Check(Input.EmulateMouseFromTouch, "Touch emulation remains enabled");
 
         await Tap("systems");
@@ -259,6 +279,8 @@ public partial class Smoke : Node
         _game.Levels[0] = _game.Levels[1] = 3; _game.Levels[2] = 2;
         for (int i = 0; i < 18000 && _game.Sector < 3; i++) _game.Step(1f / 30);
         Check(_game.Sector >= 3, "Autopilot clears two complete planets and enters sector 3");
+        Check(_game.Iron == SectorDesign.RewardFor(1).Iron + SectorDesign.RewardFor(2).Iron,
+            "Each of the first two completed sectors awards iron exactly once");
         Check(_game.Levels.SequenceEqual(new[] { 3, 3, 2 }) && _game.Weapon == 1, "Warp retains upgrades and weapon selection");
         await TestSaves();
         Check(Main.Compact(1200000) == "1.2M" && Main.Compact(1e40).Length > 10, "Large currency formats without integer overflow");
@@ -267,16 +289,17 @@ public partial class Smoke : Node
 
     private async Task TestSaves()
     {
-        _game.Credits = 12345; _game.Flux = 17;
+        _game.Credits = 12345; _game.Flux = 17; _game.Iron = 31; _game.WeaponTiers[1] = 2;
         _game.Debris.Add(new DebrisFragment { Position = Main.Center, Value = 12.5, Energy = 1, Kind = 2, Size = 2 });
         var tiles = Snapshot(_game.Planet);
         int count = _game.Debris.Count;
         double pending = _game.Debris.Sum(f => f.Value);
         long energy = _game.Debris.Sum(f => f.Energy);
         Check(_game.Persistence.Save(_game), "Atomic C# save writes successfully");
-        _game.Credits = _game.Flux = 0; _game.Debris.Clear();
+        _game.Credits = _game.Flux = _game.Iron = 0; _game.WeaponTiers[1] = 0; _game.Debris.Clear();
         Check(_game.Persistence.Load(_game), "C# save loads successfully");
         Check(_game.Credits == 12345 && _game.Flux == 17, "Save restores wallet");
+        Check(_game.Iron == 31 && _game.WeaponTiers[1] == 2, "Save restores iron and earned weapon modules");
         Check(SameTiles(tiles, _game.Planet.Blocks), "Save restores every remaining block and health value");
         Check(_game.Debris.Count == count, "Save restores pending collectible debris");
         for (int i = 0; i < 65; i++) _game.UpdateDebris(0.05f);
@@ -296,6 +319,7 @@ public partial class Smoke : Node
             Check(_game.Persistence.Load(_game), $"Original serializer {fixture} fixture is readable");
             Check(_game.Credits == 12345.75 && _game.Flux == 17 && _game.Sector == 4 && _game.Weapon == 2 &&
                 !_game.AutoMode && _game.Levels.SequenceEqual(new[] { 3, 2, 1 }), $"{fixture} preserves wallet, upgrades, sector, weapon and mode");
+            Check(_game.Iron == 0 && _game.WeaponTiers.All(tier => tier == 0), "Legacy saves default new rewards safely");
             Check(SameTiles(expected, _game.Planet.Blocks), $"{fixture} preserves original tiles and partial health");
             if (fixture == "gdscript-v02")
             {
@@ -310,8 +334,8 @@ public partial class Smoke : Node
         {
             Hp = (double)t!["hp"]!, MaxHp = (double)t["max_hp"]!, Value = (double)t["value"]!, Kind = (int)t["kind"]!, Shade = (int)t["shade"]!
         });
-        _game.Planet.Generate(4);
-        Check(SameTiles(generation, _game.Planet.Blocks), "C# generation matches checkpointed GDScript seed, ore, health and values");
+        _game.Planet.GenerateLegacyForFixture(4);
+        Check(SameTiles(generation, _game.Planet.Blocks), "Frozen legacy generator still matches the checkpointed GDScript seed, ore, health and values");
         Fixture("gdscript-v02");
         var offline = SavedJson();
         offline["auto"] = true; offline["credits"] = 10; offline["rate"] = 20;

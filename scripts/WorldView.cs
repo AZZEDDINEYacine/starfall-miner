@@ -11,6 +11,7 @@ public partial class WorldView : Node
     public float CameraScale { get; private set; } = 1;
     public float TargetScale { get; private set; } = 1;
     public int LayoutRevision { get; private set; }
+    private Vector2 _cameraFocus = Main.Center;
 
     public override void _Ready()
     {
@@ -44,8 +45,12 @@ public partial class WorldView : Node
         }
         TargetScale = Mathf.Clamp(TargetScale, 0.6f, 1.35f);
         CameraScale = snap ? TargetScale : Mathf.Lerp(CameraScale, TargetScale, 1 - Mathf.Exp(-delta * 8));
+        // Keep the ship on screen and show the nearby mining surface. A full
+        // planet no longer fits, so following its center would hide the pilot.
+        var desiredFocus = Main.Center + (Game.ShipPosition - Main.Center) * 0.68f;
+        _cameraFocus = snap ? desiredFocus : _cameraFocus.Lerp(desiredFocus, 1 - Mathf.Exp(-delta * 5));
         Stage.Scale = Vector2.One * CameraScale;
-        Stage.Position = center - Main.Center * CameraScale;
+        Stage.Position = center - _cameraFocus * CameraScale;
     }
 
     public Vector2 ScreenToWorld(Vector2 point) => (point - Stage.Position) / Mathf.Max(CameraScale, 0.01f);
