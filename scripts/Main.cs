@@ -36,6 +36,7 @@ public partial class Main : Node2D
     public int[] WeaponTiers { get; } = [0, 0, 0];
     public bool AutoMode = true, Paused, Muted, FirstRun = true;
     public bool IsTest { get; private set; }
+    public bool PlanetPreview { get; private set; }
     public bool NoSave;
     public Vector2I TargetKey = MiningPlanet.NoTarget, AimKey = MiningPlanet.NoTarget;
     public float ShotTimer = 0.3f, TapTimer, OverdriveLeft, OverdriveCooldown, WarpTimer, TransitionLeft;
@@ -51,7 +52,8 @@ public partial class Main : Node2D
     public override void _Ready()
     {
         IsTest = OS.GetCmdlineUserArgs().Contains("--test") || OS.GetCmdlineUserArgs().Contains("--qa");
-        NoSave = IsTest;
+        PlanetPreview = OS.GetCmdlineUserArgs().Contains("--planet-preview");
+        NoSave = IsTest || PlanetPreview;
         // Tests and inspection can never read, overwrite or delete the player's save.
         Persistence = new SaveStore(IsTest ? "res://.godot/tests/starfall_save_v1.json" : SavePath);
         _rng.Seed = 8086;
@@ -84,8 +86,36 @@ public partial class Main : Node2D
         GetTree().AutoAcceptQuit = false;
         GetTree().QuitOnGoBack = false;
         if (_startupNotice is { } notice) Toast(notice.Title, notice.Subtitle, notice.Color, notice.Duration);
+        else if (PlanetPreview) Toast("PLANET PREVIEW", "F7 previous / F8 next. All 13 worlds are playable; your save is untouched.", WeaponColors[0], 5);
         else if (FirstRun) Toast("AUTOPILOT ONLINE", "Tap TAKE CONTROL to fly. Ship systems are below.", WeaponColors[0], 3);
         QueueRedraw();
+    }
+
+    public override void _UnhandledKeyInput(InputEvent @event)
+    {
+        if (!PlanetPreview || @event is not InputEventKey key || !key.Pressed || key.Echo) return;
+        if (key.Keycode != Key.F7 && key.Keycode != Key.F8) return;
+        PreviewSector(Sector + (key.Keycode == Key.F8 ? 1 : -1));
+        GetViewport().SetInputAsHandled();
+    }
+
+    private void PreviewSector(int sector)
+    {
+        sector = Math.Clamp(sector, 1, SectorDesign.CampaignLength);
+        if (sector == Sector) return;
+        Sector = sector;
+        Planet.Generate(sector);
+        OrbitAngle = -2.2f;
+        ShipPosition = Center + Vector2.FromAngle(OrbitAngle) * (Planet.SurfaceRadius(OrbitAngle) + 53);
+        ShipVelocity = Vector2.Zero;
+        AimKey = TargetKey = MiningPlanet.NoTarget;
+        WarpTimer = TransitionLeft = 0;
+        ShotTimer = 0.4f;
+        Projectiles.Clear(); Particles.Clear(); Beams.Clear(); Rings.Clear(); Debris.Clear();
+        ReleaseControls();
+        View.PlaceWorld(true);
+        Hud.RequestLayout();
+        Toast($"{sector:00} / {Planet.Profile.Name}", $"{Planet.Profile.Region} · DIFFICULTY {Planet.Profile.Difficulty}/5 · {Planet.Profile.Lesson}", WeaponColors[2], 4);
     }
 
     public override void _Process(double delta) => Step((float)Math.Min(delta, 0.05));

@@ -23,6 +23,8 @@ SDK caches are kept under `.godot/`, outside source control. `NuGet.Config` incl
 
 Use **Godot 4.7.2 .NET** and the **.NET 10 SDK**. The regular Godot editor cannot run this C# project, and a different Godot release may not match the project SDK. The default `NuGet.Config` points to a Mac app bundle; `tools/dev.py` selects `NuGet.Windows.Config` on Windows, which restores the matching Godot C# packages from NuGet.org. Set `GODOT4` to the full path of the matching Godot .NET executable and put `dotnet` on `PATH` before using the Windows VS Code launch configuration. `py -3 tools/dev.py build` builds the C# assembly; then the **Starfall Miner C# (Windows)** debug configuration opens the game. Debugging new C# changes requires a local build. Exporting an APK is a separate action.
 
+To inspect the level design immediately, choose **Planet preview (Windows)** in VS Code Run and Debug after opening this folder. It builds and launches the real game at the first world; **F8** moves forward and **F7** moves back through all 13 worlds. Preview play uses a fresh session and never reads or writes your normal save. Use the regular Windows launch configuration or Godot F5 for your saved campaign.
+
 Tests and inspection require `--test` and `--qa`, respectively. These runs never load or modify `user://starfall_save_v1.json`; their explicit persistence tests use `.godot/tests/`. Do not run two persistence regression suites concurrently because they share that disposable file.
 
 ## Controls and behavior

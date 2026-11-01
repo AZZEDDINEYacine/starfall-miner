@@ -2,6 +2,10 @@
 
 The first thirteen sectors form a named campaign, followed by seeded deep-space expeditions. Each world uses the existing five block types and three weapons. Its shape, crust strength, and ore placement create a different mining decision. The presentation stays flat: square blocks, a small ship, and little visual clutter.
 
+## Try every world in the game
+
+After a local C# build, choose **Planet preview (Windows)** from VS Code's Run and Debug menu. This launches the real game scene at sector 1. Press **F8** for the next world or **F7** for the previous world, through sector 13. You can mine and fly in each world. The preview starts from a fresh session and never loads or writes the player's save. Normal Godot F5 still starts the campaign from the saved sector. The preview launcher performs a local build; no build was run while preparing this branch.
+
 ## Intended player experience
 
 - A planet is larger than the auto-mode mining viewport. The camera follows the ship toward the active surface, so the player sees the ship and only part of the planet. Manual flight also follows the ship. Changing modes does not recreate the planet.

@@ -16,6 +16,13 @@
       "preLaunchTask": "Build C# (Windows)",
       "program": "${env:GODOT4}",
       "args": ["--path", "${workspaceFolder}"], "cwd": "${workspaceFolder}", "stopAtEntry": false
+    },
+    {
+      "name": "Planet preview (Windows)", "type": "coreclr", "request": "launch",
+      "preLaunchTask": "Build C# (Windows)",
+      "program": "${env:GODOT4}",
+      "args": ["--path", "${workspaceFolder}", "--", "--planet-preview"],
+      "cwd": "${workspaceFolder}", "stopAtEntry": false
     }
   ]
 }

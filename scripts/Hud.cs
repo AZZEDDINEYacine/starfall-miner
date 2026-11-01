@@ -126,6 +126,8 @@ public partial class Hud : Control
     {
         Label(this, "STARFALL", new Rect2(24, 22, v.X - 116, 34), 24, Ink, _mono);
         Label(this, $"SECTOR {Game.Sector:00}  /  {Game.Planet.Profile.Name}", new Rect2(24, 61, v.X - 116, 24), 11, Mint, _mono);
+        if (Game.PlanetPreview)
+            Label(this, "PREVIEW  ·  F7 PREVIOUS / F8 NEXT  ·  NO SAVE", new Rect2(24, 85, v.X - 48, 17), 10, Gold, _mono);
         Button(this, "pause", "II", new Rect2(v.X - 80, 25, 56, 56), Game.TogglePause, 18);
         var cargo = Button(this, "cargo_top", "", new Rect2(24, 106, v.X - 48, 70), () => OpenPanel("cargo"));
         Label(cargo, "CREDITS", new Rect2(16, 8, 230, 18), 10, MutedInk, _mono);
@@ -148,6 +150,8 @@ public partial class Hud : Control
     {
         Button(this, "mode", "←  AUTO PILOT", new Rect2(24, 18, 190, 62), () => Game.SetAuto(true), 15, Mint);
         if (v.X > 830) Label(this, $"{Game.Planet.Profile.Name}", new Rect2(238, 25, 196, 42), 12, MutedInk, _mono);
+        if (Game.PlanetPreview)
+            Label(this, "PREVIEW  ·  F7 / F8  ·  NO SAVE", new Rect2(238, 72, v.X - 260, 20), 10, Gold, _mono);
         float statsX = Mathf.Max(230, v.X - 450), statsW = Mathf.Max(210, v.X - 106 - statsX);
         var cargo = Button(this, "cargo", "", new Rect2(statsX, 18, statsW, 62), () => OpenPanel("cargo"));
         Label(cargo, "CR", new Rect2(12, 7, 40, 16), 9, MutedInk, _mono);
