@@ -101,13 +101,13 @@ public partial class Smoke : Node
         {
             preview.Generate(sector);
             var profile = preview.Profile;
-            var reward = SectorDesign.RewardFor(sector);
+            var completionReward = SectorDesign.RewardFor(sector);
             Check(names.Add(profile.Name) && preview.Blocks.Count > 400 && preview.Blocks.ContainsKey(Vector2I.Zero) &&
                 preview.Blocks.Keys.Any(key => Math.Abs(key.X) > 10 || Math.Abs(key.Y) > 10),
                 $"Sector {sector} has a distinct named, mineable large planet");
-            Check(reward.Credits > previousReward && reward.Iron > 0 && reward.Energy > 0,
+            Check(completionReward.Credits > previousReward && completionReward.Iron > 0 && completionReward.Energy > 0,
                 $"Sector {sector} pays a larger completion reward");
-            previousReward = reward.Credits;
+            previousReward = completionReward.Credits;
         }
         preview.Free();
         Check(SectorDesign.RewardFor(5).WeaponIndex == 1 && SectorDesign.RewardFor(9).WeaponIndex == 2 &&
