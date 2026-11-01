@@ -167,6 +167,12 @@ public partial class Main : Node2D
                 ShipPosition.X = Mathf.Clamp(ShipPosition.X, bounds.Position.X, bounds.End.X);
                 ShipPosition.Y = Mathf.Clamp(ShipPosition.Y, bounds.Position.Y, bounds.End.Y);
             }
+            // Keep a useful part of the surface in view even if the player
+            // steers away from the larger planet for a long time.
+            var fromPlanet = ShipPosition - Center;
+            float maxDistance = Planet.Profile.Radius * MiningPlanet.Cell + 180;
+            if (fromPlanet.Length() > maxDistance)
+                ShipPosition = Center + fromPlanet.Normalized() * maxDistance;
         }
         ShipVelocity = (ShipPosition - previous) / Mathf.Max(delta, 0.001f);
     }

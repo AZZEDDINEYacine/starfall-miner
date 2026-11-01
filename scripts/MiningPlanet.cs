@@ -251,7 +251,7 @@ public partial class MiningPlanet : Node2D
                 BlastTriggered?.Invoke(p + Position);
                 for (int y = -1; y <= 1; y++)
                 for (int x = -1; x <= 1; x++)
-                    if (x != 0 || y != 0) Damage(key + new Vector2I(x, y), amount * 0.8 + 5 * Math.Pow(1.27, Math.Min(Sector - 1, 500)));
+                        if (x != 0 || y != 0) Damage(key + new Vector2I(x, y), amount * 0.8 + 5 * Math.Pow(1.16, Math.Min(Sector - 1, 500)));
             }
         }
         if (Blocks.Count == 0 && !ClearSent)

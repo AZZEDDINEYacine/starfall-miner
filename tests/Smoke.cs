@@ -172,6 +172,14 @@ public partial class Smoke : Node
         await Resize(1120, 540);
         Check(_game.View.Size.X > _game.View.Size.Y, "Resized desktop viewport exercises landscape layout");
         Check(!_game.Hud.Buttons.ContainsKey("systems") && _game.Hud.Buttons.ContainsKey("boost"), "Flight HUD removes management and exposes flight controls");
+        var nearShip = _game.ShipPosition;
+        _game.ShipPosition = Main.Center + new Vector2(1000, 0);
+        _game.View.PlaceWorld(true);
+        _game.Step(0.05f);
+        Check((_game.ShipPosition - Main.Center).Length() <= _game.Planet.Profile.Radius * MiningPlanet.Cell + 180.01f,
+            "Manual flight cannot leave the nearby planet entirely behind");
+        _game.ShipPosition = nearShip;
+        _game.View.PlaceWorld(true);
         var stick = _game.Controls.StickCenter;
         Touch(stick, true, 2);
         Check(_game.Controls.JoystickActive && _game.Controls.JoystickId == 2, "First finger owns steering");
@@ -226,7 +234,7 @@ public partial class Smoke : Node
         for (int weapon = 0; weapon < 3; weapon++)
         {
             _game.Planet.Generate(1); _game.WarpTimer = 0;
-            _game.ShipPosition = Main.Center + new Vector2(-192, 0); _game.Weapon = weapon;
+            _game.ShipPosition = Main.Center + new Vector2(-_game.Planet.SurfaceRadius(Mathf.Pi) - 53, 0); _game.Weapon = weapon;
             _game.Projectiles.Clear(); _game.Debris.Clear(); Array.Clear(_game.Levels);
             int blocks = _game.Planet.Blocks.Count;
             double credits = _game.Credits;
