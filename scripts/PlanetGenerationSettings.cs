@@ -7,6 +7,9 @@ namespace StarfallMiner;
 public partial class PlanetGenerationSettings : Resource
 {
     [ExportGroup("Shape")]
+    [Export] public double RadiusGrowthPerDoubling { get; set; } = 6;
+    public double RadiusForSector(int sector) => MiningPlanet.BaseRadius + RadiusGrowthPerDoubling * Math.Log2(Math.Max(1, sector));
+    [ExportGroup("Legacy capped shape tuning (unused)")]
     [Export] public double RadiusGrowthPerSector { get; set; } = 0.12;
     [Export] public double MaximumExtraRadius { get; set; } = 0.8;
     [Export] public float SurfaceNoiseMin { get; set; } = -0.5f;
@@ -19,22 +22,24 @@ public partial class PlanetGenerationSettings : Resource
     [Export(PropertyHint.Range, "0,1,0.001")]
     public double CrystalThreshold { get; set; } = 0.185;
     [Export(PropertyHint.Range, "0,1,0.001")]
-    public double VolatileThreshold { get; set; } = 0.235;
+    public double VolatileThreshold { get; set; } = 0.10;
+    [Export] public double ExplosiveDamage { get; set; } = 12;
+    [Export] public float ExplosiveRadius { get; set; } = 32;
     [Export] public double MinimumVolatileDistance { get; set; } = 2.5;
 
     [ExportGroup("Legacy exponential tuning (unused)")]
     [Export] public double ToughnessGrowth { get; set; } = 1.27;
     [Export] public double RewardGrowth { get; set; } = 1.19;
     [ExportGroup("Block Health & Credits")]
-    [Export] public double BaseHp { get; set; } = 4.6;
-    [Export] public double HpDepthBonus { get; set; } = 0.48;
+    [Export] public double BaseHp { get; set; } = 3.2;
+    [Export] public double HpDepthBonus { get; set; } = 0.25;
     [Export] public double GoldHpMultiplier { get; set; } = 1.3;
     [Export] public double CrystalHpMultiplier { get; set; } = 1.15;
     [Export] public double VolatileHpMultiplier { get; set; } = 0.65;
     [Export] public double CoreHpMultiplier { get; set; } = 10;
-    [Export] public double StoneValue { get; set; } = 3;
-    [Export] public double GoldValue { get; set; } = 15;
-    [Export] public double OtherOreValue { get; set; } = 6;
+    [Export] public double StoneValue { get; set; } = 2;
+    [Export] public double GoldValue { get; set; } = 8;
+    [Export] public double OtherOreValue { get; set; } = 4;
     [Export] public double CoreValueMultiplier { get; set; } = 20;
     [ExportGroup("Deep deposits & campaign")]
     [Export] public double SectorHealthStep { get; set; } = 0.38;

@@ -16,6 +16,7 @@ public partial class FlightInput : Node
         PointerId = -1;
         _dragged = _manualPointer = false;
         Game.Navigation.Stop();
+        Game.ClearLaserBeams();
     }
 
     private bool CanNavigate(Vector2 point) => !Game.Paused && Game.WarpTimer <= 0 &&
@@ -27,6 +28,7 @@ public partial class FlightInput : Node
         if (!CanNavigate(PointerPosition) || PointerPosition.DistanceTo(Game.View.WorldToScreen(Game.ShipPosition)) <= Game.FlightSettings.PointerDeadZone)
         {
             Game.Navigation.Stop();
+            Game.ClearLaserBeams();
             return;
         }
         // Recompute from the held screen point every frame. Camera movement must not
@@ -107,6 +109,7 @@ public partial class FlightInput : Node
         {
             _manualPointer = false;
             Game.Navigation.Stop();
+            Game.ClearLaserBeams();
             return;
         }
         if (canceled || _dragged || point.DistanceTo(_pressPosition) > 24 || !CanNavigate(point)) return;

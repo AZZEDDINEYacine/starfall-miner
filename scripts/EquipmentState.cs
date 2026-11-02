@@ -6,6 +6,7 @@ namespace StarfallMiner;
 public sealed class CraftedWeapon
 {
     public int Id, Type, Level;
+    public int RateLevel;
 }
 
 public sealed class MiningDrone
@@ -16,7 +17,7 @@ public sealed class MiningDrone
     [JsonIgnore] public Vector2I Target = MiningPlanet.NoTarget;
     public bool Recalling = true;
     [JsonIgnore] public bool Docked = true;
-    [JsonIgnore] public float RetargetTimer;
+    [JsonIgnore] public float RetargetTimer, TransferLeft;
 }
 
 /// <summary>Owned instances and unique mount assignments; transient flight state is never serialized.</summary>
@@ -80,7 +81,7 @@ public sealed class EquipmentState
             Drones.Count > DroneCapacity || HighestSector < 1 || HighestSector > 1_000_000 || NextId < 2 || NextId > 1_000_000) return false;
         var ids = new HashSet<int>();
         foreach (var weapon in Weapons)
-            if (weapon == null || weapon.Id <= 0 || weapon.Id >= NextId || !ids.Add(weapon.Id) || weapon.Type is < 0 or > 4 || weapon.Level is < 0 or > 50) return false;
+            if (weapon == null || weapon.Id <= 0 || weapon.Id >= NextId || !ids.Add(weapon.Id) || weapon.Type < 0 || weapon.Type >= Main.Weapons.Length || weapon.Level is < 0 or > 50 || weapon.RateLevel is < 0 or > 50) return false;
         var mounts = new HashSet<int>();
         if (FindWeapon(ShipWeaponId) == null || !mounts.Add(ShipWeaponId)) return false;
         for (int i = 0; i < ShipAuxWeaponIds.Length; i++)

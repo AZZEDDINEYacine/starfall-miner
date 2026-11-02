@@ -24,9 +24,9 @@ public partial class Starfield : Node2D
         var size = GetViewportRect().Size;
         DrawRect(new Rect2(Vector2.Zero, size), Style != null && Style.Backdrop.A > 0 ? Style.Backdrop : Palette.Background);
         var treatment = Style?.Treatment ?? PlanetVisualStyle.Surface.FlatGrid;
-        if (treatment is PlanetVisualStyle.Surface.NeonFrontier or PlanetVisualStyle.Surface.Survey)
+        if (treatment == PlanetVisualStyle.Surface.NeonFrontier)
         {
-            var grid = new Color(Style!.EdgeTint, treatment == PlanetVisualStyle.Surface.Survey ? 0.065f : 0.035f);
+            var grid = new Color(Style!.EdgeTint, 0.035f);
             for (float x = 0; x < size.X; x += 48) DrawLine(new Vector2(x, 0), new Vector2(x, size.Y), grid, 1);
             for (float y = 0; y < size.Y; y += 48) DrawLine(new Vector2(0, y), new Vector2(size.X, y), grid, 1);
         }

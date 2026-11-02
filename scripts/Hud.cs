@@ -28,6 +28,7 @@ public partial class Hud : Control
     private bool _modePending;
     private Label? _speedLabel, _headingLabel, _flightLabel;
     private HologramChannel? _telemetry;
+    public SurveyMinimap? Minimap { get; private set; }
     public bool ActivationRunning => Channels.Exists(c => c.Igniting);
     public float ActivationDuration => Motion.ActivationDuration;
     private Font _regular => RegularFont;
@@ -52,13 +53,13 @@ public partial class Hud : Control
     private Color _noticeColor;
     private bool _resetConfirmation, _buildingModal;
     private int _lastWeapon = -1;
-    private bool _skipModalIgnition;
+    private bool _modalIgnitionPending;
     private bool _fabricateDrones, _fleetDrones;
-    private int _fleetPage, _designPage;
+    private int _fleetPage;
     private Label? _equipmentStatus;
     private Label? _workshopCurrency, _workshopMaterials;
 
-    public void RefreshInventory() { _skipModalIgnition = true; RequestLayout(); }
+    public void RefreshInventory() { _modalIgnitionPending = false; RequestLayout(); }
     public void OpenWeaponRecipes() { _fabricateDrones = false; OpenPanel("fabricator"); }
 
     public override void _Ready()
@@ -205,7 +206,7 @@ public partial class Hud : Control
         _workshopCurrency = _workshopMaterials = null;
         _creditLabel = _energyLabel = _rateLabel = _recoveredLabel = _progressLabel = null;
         _speedLabel = _headingLabel = _flightLabel = null;
-        _telemetry = null;
+        _telemetry = null; Minimap = null;
         _boostButton = null;
         _lastWeapon = -1;
         var v = GetViewportRect().Size;
@@ -214,11 +215,15 @@ public partial class Hud : Control
         _buildingModal = false;
         BuildFlightHeader(v);
         if (Game.View.LayoutAutoMode) BuildAuto(v); else BuildManual(v);
+        float mapSize = Mathf.Clamp((v.Y - 464) * 0.22f, 80, 112);
+        var survey = Channel("Survey", new Rect2(v.X - 24 - mapSize, 232, mapSize, mapSize), HologramChannel.Geometry.None, 0.35f);
+        Minimap = new SurveyMinimap { Game = Game, Font = _mono, Size = survey.Size };
+        survey.AddChild(Minimap);
         BuildToast(v);
         if (PanelKind != "") BuildModal(v);
         Refresh();
-        foreach (var channel in Channels) channel.Activate(animate || channel.Name == "Modal" && !_skipModalIgnition);
-        _skipModalIgnition = false;
+        foreach (var channel in Channels) channel.Activate(animate || channel.Name == "Modal" && _modalIgnitionPending);
+        _modalIgnitionPending = false;
         Modulate = Colors.White;
     }
 
@@ -248,7 +253,7 @@ public partial class Hud : Control
         var command = Channel("AutopilotCommand", new Rect2(24, v.Y - 188, v.X - 48, 162), HologramChannel.Geometry.Command, 1);
         var mode = Button(command, "mode", "", new Rect2(0, 0, v.X - 48, 78), () => Game.SetAuto(false), 18, Hologram.Cyan);
         Label(mode, "TAKE CONTROL   ›", new Rect2(18, 9, v.X - 90, 30), 19, Hologram.Cyan, _mono);
-        Label(mode, "MANUAL LINK / HOLD + DRAG TO STEER", new Rect2(18, 43, v.X - 90, 23), 9, Hologram.Dim, _mono);
+        Label(mode, "PILOT FOR 2.4× SHIP OUTPUT / HOLD + DRAG", new Rect2(18, 43, v.X - 90, 23), 9, Hologram.Dim, _mono);
         float half = (v.X - 64) * 0.5f;
         Button(command, "systems", "SHIP SYSTEMS", new Rect2(0, 100, half, 62), () => OpenPanel("systems"), 12);
         Button(command, "cargo", "EXTRACTION LOG", new Rect2(half + 16, 100, half, 62), () => OpenPanel("cargo"), 11);
@@ -275,7 +280,7 @@ public partial class Hud : Control
         {
             int index = i;
             _weaponButtons.Add(Button(loadout, $"weapon_{i}", names[i],
-                new Rect2(i * (slot + 8), 0, slot, 52), () => Game.SetWeapon(index), 10, Palette.Weapon(i)));
+                new Rect2(i * (slot + 8), 0, slot, 52), () => Game.SetWeapon(index == 2 && Game.Weapon >= 2 ? Game.Weapon : index), 10, Palette.Weapon(i)));
         }
         _boostButton = Button(loadout, "boost", "BOOST", new Rect2(3 * (slot + 8), 0, slot, 52),
             Game.ActivateOverdrive, 10, Hologram.Amber);
@@ -299,13 +304,15 @@ public partial class Hud : Control
 
     public void OpenPanel(string kind)
     {
+        if (PanelKind == kind) return;
         Game.ReleaseControls();
+        // The four tabs share a single workshop visit, not four power-on events.
+        _modalIgnitionPending = !(IsWorkshop(PanelKind) && IsWorkshop(kind));
         PanelKind = kind;
-        if (kind == "designs") _designPage = Game.VisualStyleIndex / 6;
         _resetConfirmation = false;
         RequestLayout();
     }
-    public void ClosePanel() { PanelKind = ""; _resetConfirmation = false; RequestLayout(); }
+    public void ClosePanel() { PanelKind = ""; _modalIgnitionPending = false; _resetConfirmation = false; RequestLayout(); }
     private void CloseAction()
     {
         if (PanelKind == "designs") OpenPanel("pause");
@@ -313,13 +320,20 @@ public partial class Hud : Control
         else if (Game.Paused) Game.TogglePause();
         else ClosePanel();
     }
-    public void SetPauseVisible(bool value) { PanelKind = value ? "pause" : ""; _resetConfirmation = false; RequestLayout(); }
+    public void SetPauseVisible(bool value)
+    {
+        _modalIgnitionPending = value && PanelKind != "pause";
+        PanelKind = value ? "pause" : "";
+        _resetConfirmation = false;
+        RequestLayout();
+    }
 
     public bool IsWorldPoint(Vector2 point) => new Rect2(0, 230, Game.View.Size.X, Mathf.Max(0, Game.View.Size.Y - 464)).HasPoint(point);
 
     public bool IsUiPoint(Vector2 point)
     {
         if (BlocksWorldInput) return true;
+        if (Minimap?.GetGlobalRect().HasPoint(point) == true) return true;
         foreach (var button in Buttons.Values)
             if (button.IsVisibleInTree() && button.GetGlobalRect().HasPoint(point)) return true;
         return false;
@@ -332,7 +346,7 @@ public partial class Hud : Control
         _content!.AddChild(modal);
         bool comparing = PanelKind == "designs";
         modal.AddChild(new ColorRect { Size = v, Color = new Color(Palette.ModalScrim, comparing ? 0.08f : 0.94f), MouseFilter = MouseFilterEnum.Ignore });
-        float width = Mathf.Min(v.X - 48, 560), height = Mathf.Min(v.Y - 32, comparing ? 410 : IsWorkshop(PanelKind) ? 820 : 480);
+        float width = Mathf.Min(v.X - 48, 560), height = Mathf.Min(v.Y - 32, comparing ? 300 : IsWorkshop(PanelKind) ? 820 : PanelKind == "pause" ? 536 : 480);
         float top = comparing ? v.Y - height - 20 : (v.Y - height) * 0.5f;
         var popup = Channel("Modal", new Rect2((v.X - width) * 0.5f, top, width, height), HologramChannel.Geometry.None, 0);
         popup.ZIndex = 31;
@@ -379,6 +393,7 @@ public partial class Hud : Control
         var designs = Button(card, "designs", "", new Rect2(22, 220, width - 44, 60), () => OpenPanel("designs"));
         Label(designs, "COMPARE WORLD DESIGNS  ›", new Rect2(14, 4, width - 72, 26), 12, Hologram.Cyan, _mono);
         Label(designs, Game.CurrentVisualStyle.Title, new Rect2(14, 31, width - 72, 20), 10, MutedInk, _mono);
+        Button(card, "test_credits", "", new Rect2(22, height - 230, width - 44, 40), Game.GrantTestCredits, 11, Hologram.Amber);
         Button(card, "resume", "RESUME", new Rect2(22, height - 176, width - 44, 54), Game.TogglePause, 15, Mint);
         float half = (width - 56) * 0.5f;
         Button(card, "sound", Game.Muted ? "SOUND ON" : "SOUND OFF", new Rect2(22, height - 104, half, 54), () => { Game.ToggleSound(); RequestLayout(); }, 11);
@@ -387,12 +402,11 @@ public partial class Hud : Control
 
     private void BuildDesigns(Panel card, float width, float height)
     {
-        _designPage = Math.Clamp(_designPage, 0, (Game.VisualStyles.Count - 1) / 6);
         _designCaption = Label(card, "", new Rect2(22, 55, width - 44, 18), 9, MutedInk, _mono);
         float cell = (width - 52) * 0.5f;
-        for (int row = 0; row < 6; row++)
+        for (int row = 0; row < Game.VisualStyles.Count; row++)
         {
-            int index = _designPage * 6 + row;
+            int index = row;
             if (index >= Game.VisualStyles.Count) break;
             var art = Game.VisualStyles[index];
             var choice = Button(card, $"design_{index}", "", new Rect2(22 + row % 2 * (cell + 8), 84 + row / 2 * 58, cell, 50),
@@ -402,10 +416,8 @@ public partial class Hud : Control
             Label(choice, art.Description, new Rect2(7, 27, cell - 14, 16), 9, MutedInk);
             _designButtons.Add(choice);
         }
-        Button(card, "design_prev", "‹", new Rect2(22, 267, 48, 32), () => { _designPage = Math.Max(0, _designPage - 1); RefreshInventory(); });
-        Label(card, $"{_designPage + 1}/{(Game.VisualStyles.Count + 5) / 6} / 8 NEW + ORIGINALS + ARCHIVE", new Rect2(78, 267, width - 156, 32), 8, MutedInk, _mono).HorizontalAlignment = HorizontalAlignment.Center;
-        Button(card, "design_next", "›", new Rect2(width - 70, 267, 48, 32), () => { _designPage++; RefreshInventory(); });
-        Label(card, "RARE DEPOSITS:  III TITANIUM   ▣ IRIDIUM   ◉ AETHER", new Rect2(22, 311, width - 44, 22), 9, Hologram.Amber, _mono);
+        var legend = Label(card, "COLOR-CODED CELLS / REACTOR CORES\nRED CHARGES / AREA BLAST ON IMPACT", new Rect2(22, 156, width - 44, 54), 10, Hologram.Amber, _mono);
+        legend.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         float half = (width - 56) * 0.5f;
         Button(card, "back", "‹ PAUSE", new Rect2(22, height - 58, half, 42), () => OpenPanel("pause"), 12);
         Button(card, "resume", "RESUME", new Rect2(34 + half, height - 58, half, 42), Game.TogglePause, 12, Hologram.Cyan);
@@ -417,7 +429,7 @@ public partial class Hud : Control
         if (_designCaption != null) _designCaption.Text = "PAUSED PREVIEW / " + Game.CurrentVisualStyle.Title;
         for (int i = 0; i < _designButtons.Count; i++)
         {
-            _designButtons[i].Selected = _designPage * 6 + i == Game.VisualStyleIndex;
+            _designButtons[i].Selected = i == Game.VisualStyleIndex;
             _designButtons[i].QueueRedraw();
         }
     }
@@ -435,6 +447,7 @@ public partial class Hud : Control
 
     public void Refresh()
     {
+        if (Buttons.TryGetValue("test_credits", out var funds)) funds.Text = $"TEST / +1B CR   ·   WALLET {Main.Compact(Game.Credits)}";
         RefreshService();
         if (_workshopCurrency != null) _workshopCurrency.Text = $"RANK {Game.EngineeringRank}  /  {Game.Equipment.Drones.Count}/{Game.DroneBays} DRONE BAYS  /  {Main.Compact(Game.Credits)} CR";
         if (_workshopMaterials != null) _workshopMaterials.Text = $"TITANIUM {Game.Equipment.Materials[0]}    IRIDIUM {Game.Equipment.Materials[1]}    AETHER {Game.Equipment.Materials[2]}";
@@ -445,17 +458,18 @@ public partial class Hud : Control
         if (_recoveredLabel != null) _recoveredLabel.Text = $"+{Main.Compact(Game.SessionCredits)} CR   /   +{Main.Compact(Game.SessionEnergy)} FLUX";
         if (_speedLabel != null) _speedLabel.Text = Game.ShipVelocity.Length().ToString("000", CultureInfo.InvariantCulture);
         if (_headingLabel != null) _headingLabel.Text = $"{Mathf.PosMod(Mathf.RadToDeg(Game.ShipAngle) + 90, 360):000}°";
-        if (_flightLabel != null) _flightLabel.Text = Game.Navigation.ClearingPath ? "MINING LOCK  /  SAFE STAND-OFF" :
-            Game.Controls.PointerId != -1 ? "VECTOR LINK  /  HOLD TO STEER" : "HOLD + DRAG TO STEER  /  RELEASE TO STOP";
+        if (_flightLabel != null) _flightLabel.Text = Game.Navigation.ClearingPath ? "PRECISION MINING / 2.4× SHIP OUTPUT" :
+            Game.Controls.PointerId != -1 ? "VECTOR LINK / 2.4× SHIP OUTPUT WHEN MINING" : "HOLD + DRAG TO STEER / RELEASE TO STOP / 2.4× OUTPUT";
         if (_telemetry != null) _telemetry.Meter = Mathf.Clamp(Game.Flux / 5f, 0, 1);
         if (_lastWeapon != Game.Weapon)
         {
             for (int i = 0; i < _weaponButtons.Count; i++)
             {
                 var button = _weaponButtons[i];
-                button.Selected = Game.Weapon == i;
-                string[] loadoutNames = ["LANCE", "NOVA", "ION"];
-                button.Text = loadoutNames[i] + (Game.HasShipWeaponType(i) ? "" : "\nCRAFT / FIT");
+                int type = i == 2 && Game.Weapon >= 2 ? Game.Weapon : i;
+                button.Selected = Game.Weapon == type;
+                string[] loadoutNames = ["LANCE", "NOVA", "ION", "NOVA WAVE", "BORE", "FLUX BEAM"];
+                button.Text = loadoutNames[type] + (Game.HasShipWeaponType(type) ? "" : "\nCRAFT / FIT");
                 if (!button.Holographic)
                     button.AddThemeStyleboxOverride("normal", Style(Game.Weapon == i ? Palette.WeaponSelectedBackground : PanelColor, Game.Weapon == i ? Palette.Weapon(i) : Edge));
                 button.QueueRedraw();

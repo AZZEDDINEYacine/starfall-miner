@@ -117,23 +117,25 @@ public partial class Hud
             }
             return;
         }
-        _fleetPage = Math.Clamp(_fleetPage, 0, (Game.Equipment.Weapons.Count - 1) / 3);
-        for (int row = 0; row < 3; row++)
+        _fleetPage = Math.Clamp(_fleetPage, 0, (Game.Equipment.Weapons.Count - 1) / 2);
+        for (int row = 0; row < 2; row++)
         {
-            int index = _fleetPage * 3 + row;
+            int index = _fleetPage * 2 + row;
             if (index >= Game.Equipment.Weapons.Count) break;
             var item = Game.Equipment.Weapons[index];
-            float y = body + 42 + row * 82;
+            float y = body + 42 + row * 122;
             Label(card, $"{Main.Weapons[item.Type].ToUpperInvariant()}  LV {item.Level}", new Rect2(22, y, width - 44, 21), 12, Hologram.Cyan, _mono);
             string location = Game.Equipment.ShipMounted(item.Id) ? "ON SHIP" : Game.Equipment.Mounted(item.Id) ? "ON DRONE" : "RESERVE";
-            Label(card, $"{location} / +{item.Level * 8}% POWER", new Rect2(22, y + 22, width - 44, 16), 9, MutedInk, _mono);
-            float third = (width - 60) / 3;
-            Button(card, $"equip_{item.Id}", item.Id == Game.Equipment.ShipWeaponId ? "PRIMARY" : Game.Equipment.ShipMounted(item.Id) ? "UNFIT AUX" : "FIT SHIP", new Rect2(22, y + 42, third, 32), () => Game.ToggleShipMount(item.Id), 9);
-            Button(card, $"primary_{item.Id}", "SET PRIMARY", new Rect2(30 + third, y + 42, third, 32), () => Game.EquipShip(item.Id), 9);
-            Button(card, $"weapon_upgrade_{item.Id}", $"↑ {Main.Compact(Game.WeaponUpgradeCost(item))} CR", new Rect2(38 + third * 2, y + 42, third, 32), () => Game.UpgradeEquipment(item.Id, false), 9, Hologram.Amber);
+            Label(card, $"{location} / POWER +{Math.Round((Game.WeaponPower(item.Level) - 1) * 100)}% / RATE +{Math.Round((Main.FireRateBonus(item.RateLevel) - 1) * 100)}%", new Rect2(22, y + 22, width - 44, 16), 9, MutedInk, _mono);
+            Button(card, $"equip_{item.Id}", item.Id == Game.Equipment.ShipWeaponId ? "PRIMARY" : Game.Equipment.ShipMounted(item.Id) ? "UNFIT AUX" : "FIT SHIP", new Rect2(22, y + 42, half, 30), () => Game.ToggleShipMount(item.Id), 10);
+            Button(card, $"primary_{item.Id}", "SET PRIMARY", new Rect2(34 + half, y + 42, half, 30), () => Game.EquipShip(item.Id), 10);
+            string power = item.Level >= Game.EquipmentLevelCap ? "POWER / RANK LIMIT" : $"POWER ↑ / {Main.Compact(Game.WeaponUpgradeCost(item))} CR";
+            string rate = item.RateLevel >= Game.EquipmentLevelCap ? "RATE / RANK LIMIT" : $"FIRE RATE ↑ / {Main.Compact(Game.FireRateUpgradeCost(item))} CR";
+            Button(card, $"weapon_upgrade_{item.Id}", power, new Rect2(22, y + 78, half, 36), () => Game.UpgradeEquipment(item.Id, false), 10, Hologram.Amber);
+            Button(card, $"rate_upgrade_{item.Id}", rate, new Rect2(34 + half, y + 78, half, 36), () => Game.UpgradeFireRate(item.Id), 10, Hologram.Cyan);
         }
         Button(card, "weapons_prev", "‹", new Rect2(22, body + 294, 52, 30), () => { _fleetPage = Math.Max(0, _fleetPage - 1); RebuildWorkshop(); }, 15);
-        Label(card, $"PAGE {_fleetPage + 1} / {(Game.Equipment.Weapons.Count + 2) / 3}", new Rect2(86, body + 294, width - 172, 30), 10, MutedInk, _mono).HorizontalAlignment = HorizontalAlignment.Center;
+        Label(card, $"PAGE {_fleetPage + 1} / {(Game.Equipment.Weapons.Count + 1) / 2}", new Rect2(86, body + 294, width - 172, 30), 10, MutedInk, _mono).HorizontalAlignment = HorizontalAlignment.Center;
         Button(card, "weapons_next", "›", new Rect2(width - 74, body + 294, 52, 30), () => { _fleetPage++; RebuildWorkshop(); }, 15);
     }
 

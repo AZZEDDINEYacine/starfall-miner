@@ -33,6 +33,7 @@ public partial class Smoke
         _game.Planet.Blocks.Clear(); _game.Planet.ClearSent = false;
         for (int x = 0; x < 3; x++) _game.Planet.Blocks[new Vector2I(x, 0)] = new OreBlock { Hp = 100, MaxHp = 100, Value = 1 };
         _game.ShipPosition = Main.Center + Vector2.Left * 80;
+        _game.ShipAngle = 0; _game.Autopilot.Reset(0);
         _game.TargetKey = Vector2I.Zero; _game.ShotTimer = 0;
         _game.Fire();
         Check(Near(_game.Planet.Blocks[Vector2I.Zero].Hp, 98.9) && _game.Planet.Blocks[new Vector2I(1, 0)].Hp == 100,
@@ -41,8 +42,8 @@ public partial class Smoke
         for (int i = 0; i < 6; i++) _game.Step(0.05f);
         Check(_game.Projectiles.Count == 1 && _game.Waves.Count == 1,
             "Auxiliary cannon and Nova wave fire beside the primary weapon in the same simulation step");
-        Check(Main.WeaponPower(20) == 2.6 && Main.WeaponRate(20) < 1.25f && _game.EquipmentLevelCap == 15,
-            "Individual upgrades have restrained additive damage/cadence and rank-based level caps");
+        Check(Near(_game.WeaponPower(20), 13) && Main.WeaponRate(20) < 1.25f && _game.EquipmentLevelCap == 15,
+            "Individual upgrades have substantial additive damage, restrained cadence and rank-based level caps");
 
         _game.Equipment.ShipAuxWeaponIds = [0, 0];
         _game.EquipShip(wave.Id);
@@ -64,7 +65,7 @@ public partial class Smoke
         _game.Planet.Blocks[Vector2I.Zero] = new OreBlock { Hp = 100, MaxHp = 100, Material = 0, MaterialAmount = 1 };
         _game.Planet.Blocks[Vector2I.Right] = new OreBlock { Hp = 100, MaxHp = 100 };
         _game.EquipShip(bore.Id); _game.TargetKey = Vector2I.Zero; _game.ShotTimer = 0; _game.Fire();
-        Check(Near(_game.Planet.Blocks[Vector2I.Zero].Hp, 93.5) && Near(_game.Planet.Blocks[Vector2I.Right].Hp, 97.4),
+        Check(Near(_game.Planet.Blocks[Vector2I.Zero].Hp, 89) && Near(_game.Planet.Blocks[Vector2I.Right].Hp, 95.6),
             "Bore laser pierces two blocks and specializes in rare-deposit armor rather than dominating ordinary stone");
         _game.EquipShip(wave.Id); _game.EquipDrone(drone.Id, bore.Id);
         _game.Planet.Generate(1); _game.PlaceShipAtOrbit();
@@ -111,7 +112,7 @@ public partial class Smoke
         var rect = _game.Hud.Buttons["hardpoint"].GetGlobalRect(); var point = rect.GetCenter();
         Touch(point, true, 10); Mouse(point, true, true); Mouse(point, false, true); Touch(point, false, 10);
         Mouse(point, true, true); Mouse(point, false, true); await Frame(); await Frame();
-        Check(_game.ShipHardpoints == 2 && _game.Credits == 7600, "Injected touchscreen hardpoint purchase charges once despite mouse emulation");
+        Check(_game.ShipHardpoints == 2 && _game.Credits == 9400, "Injected touchscreen hardpoint purchase charges once despite mouse emulation");
         await Tap("tab_fleet");
         Check(_game.Hud.FindChildren("*", "Control", true, false).OfType<ShipSchematic>().Count() == 1, "The ship remains visible while fitting or upgrading individual weapons");
         _game.ResetProgress(); await Frame(); await Frame();

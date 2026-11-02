@@ -9,6 +9,8 @@ public partial class QaBridge : Node
     private readonly TcpServer _server = new();
     private readonly List<Client> _clients = new();
     private Main _game = null!;
+    private int _pilotOverlapFrames;
+    private int _pilotCutFrames;
     private sealed class Client(StreamPeerTcp peer)
     {
         public StreamPeerTcp Peer = peer;
@@ -70,14 +72,29 @@ public partial class QaBridge : Node
             levels = _game.Levels, auto = _game.AutoMode, paused = _game.Paused, muted = _game.Muted,
             engineering_rank = _game.EngineeringRank, drone_bays = _game.DroneBays,
             materials = _game.Equipment.Materials,
-            owned_weapons = _game.Equipment.Weapons.Select(w => new { id = w.Id, type = w.Type, level = w.Level }).ToArray(),
+            owned_weapons = _game.Equipment.Weapons.Select(w => new { id = w.Id, type = w.Type, level = w.Level, rate_level = w.RateLevel }).ToArray(),
             drones = _game.Equipment.Drones.Select(d => new { id = d.Id, type = d.Type, level = d.Level, weapon_id = d.WeaponId, docked = d.Docked, recalling = d.Recalling, x = d.Position.X, y = d.Position.Y }).ToArray(),
             ship_weapon_id = _game.Equipment.ShipWeaponId,
             ship_hardpoints = _game.ShipHardpoints, ship_mounts = _game.Equipment.MountedShipCount,
             ship_aux_weapon_ids = _game.Equipment.ShipAuxWeaponIds,
             visible_ship_previews = _game.Hud.FindChildren("*", "Control", true, false).OfType<ShipSchematic>().Count(c => c.IsVisibleInTree()),
             waves = _game.Waves.Count,
+            lasers = _game.LaserBeams.Select(b => new { active = b.Active, hit = b.Hit, x = b.Origin.X, y = b.Origin.Y, end_x = b.End.X, end_y = b.End.Y }).ToArray(),
+            laser_audio_playing = _game.Sound.LaserLoopPlaying, laser_audio_starts = _game.Sound.LaserLoopStarts,
+            terrain_hue = PlanetRenderer.TerrainColor(_game.CurrentVisualStyle.OreColor(0, _game.Palette), _game.Planet.Sector).H,
+            special_time = _game.Planet.GetNode<PlanetRenderer>("Renderer").AnimationTime,
+            special_particles = _game.Planet.GetNode<PlanetRenderer>("Renderer").AnimatedParticles,
+            impact_charges = _game.Planet.Blocks.Values.Count(MiningPlanet.IsExplosive),
             objective = _game.NextObjective,
+            pilot_state = _game.Autopilot.State.ToString(), pilot_can_fire = _game.Autopilot.CanFire,
+            pilot_sensor_hits = _game.Autopilot.SensorHits, pilot_overlap_frames = _pilotOverlapFrames,
+            pilot_cut_frames = _pilotCutFrames,
+            hull_overlap = _game.Planet.ContainsPoint(_game.ShipPosition - Main.Center, AutopilotSteering.HullPadding),
+            planet_radius = _game.Planet.MapRadius,
+            minimap = _game.Hud.Minimap == null ? null : new {
+                x = _game.Hud.Minimap.GetGlobalRect().Position.X, y = _game.Hud.Minimap.GetGlobalRect().Position.Y,
+                w = _game.Hud.Minimap.Size.X, h = _game.Hud.Minimap.Size.Y,
+                raster_revision = _game.Hud.Minimap.RasterRevision, raster_updates = _game.Hud.Minimap.RasterUpdates },
             blocks = _game.Planet.Blocks.Count, planet_id = _game.Planet.GetInstanceId(),
             planet_hp = _game.Planet.Blocks.Values.Sum(b => b.Hp),
             visual_style = _game.CurrentVisualStyle.Id, visual_style_index = _game.VisualStyleIndex,
@@ -95,7 +112,7 @@ public partial class QaBridge : Node
             layout_auto = _game.View.LayoutAutoMode,
             hud_alpha = _game.Hud.Modulate.A, camera_scale = _game.View.CameraScale,
             activation_duration = _game.Hud.ActivationDuration, activation_running = _game.Hud.ActivationRunning,
-            hologram_channels = _game.Hud.Channels.Select(c => new { name = c.Name.ToString(), brightness = c.Brightness,
+            hologram_channels = _game.Hud.Channels.Select(c => new { name = c.Name.ToString(), id = c.GetInstanceId(), brightness = c.Brightness,
                 age = c.Age, order = c.Order, processing = c.IsProcessing(), alpha = c.Modulate.A, x = c.Position.X, y = c.Position.Y }).ToArray(),
             camera_x = _game.View.CameraFocus.X, camera_y = _game.View.CameraFocus.Y,
             ship_screen_x = _game.View.WorldToScreen(_game.ShipPosition).X, ship_screen_y = _game.View.WorldToScreen(_game.ShipPosition).Y,
@@ -117,6 +134,7 @@ public partial class QaBridge : Node
                 case "state": break;
                 case "freeze": _game.SetProcess(!request.GetProperty("value").GetBoolean()); break;
                 case "legacy_controls_fixture":
+                    _game.Credits = 80;
                     _game.Equipment = EquipmentState.Legacy(_game.Sector, _game.Weapon);
                     _game.Hud.RequestLayout();
                     break;
@@ -162,6 +180,7 @@ public partial class QaBridge : Node
                     _game.View.PlaceWorld(true);
                     break;
                 case "deep_deposits_fixture":
+                    _game.SetVisualStyle(0, false);
                     _game.ReleaseControls(); _game.Paused = false; _game.WarpTimer = 0;
                     _game.SetAuto(false); _game.Hud.ClosePanel();
                     _game.Planet.Blocks.Clear(); _game.Planet.ClearSent = false;
@@ -173,10 +192,35 @@ public partial class QaBridge : Node
                         var ore = _game.Planet.Blocks[new Vector2I(0, (mineral - 1) * 3)];
                         ore.Material = mineral; ore.MaterialAmount = 1;
                     }
+                    _game.Planet.Blocks[new Vector2I(0, -6)].Kind = MiningPlanet.Gold;
+                    _game.Planet.Blocks[new Vector2I(0, 6)].Kind = MiningPlanet.Crystal;
+                    _game.Planet.Blocks[new Vector2I(0, -9)].Kind = MiningPlanet.Volatile;
+                    _game.Planet.Blocks[new Vector2I(0, 9)].Kind = MiningPlanet.Core;
                     _game.ShipPosition = Main.Center + Vector2.Left * 70;
                     _game.ShipAngle = 0;
                     _game.Planet.TotalBlocks = _game.Planet.Blocks.Count;
                     _game.View.PlaceWorld(true); _game.Planet.NotifyTilesChanged();
+                    break;
+                case "special_frame":
+                    var specialRenderer = _game.Planet.GetNode<PlanetRenderer>("Renderer");
+                    specialRenderer.AnimationFrozen = true;
+                    specialRenderer.SeekAnimation(request.GetProperty("seconds").GetSingle());
+                    break;
+                case "impact_fixture":
+                    _game.ReleaseControls(); _game.Paused = false; _game.WarpTimer = 0;
+                    _game.SetAuto(false); _game.Hud.ClosePanel();
+                    _game.Equipment = EquipmentState.Fresh(); _game.Credits = 80; Array.Clear(_game.Levels); _game.Weapon = 0;
+                    _game.Planet.Blocks.Clear(); _game.Planet.ClearSent = false;
+                    _game.Planet.Blocks[Vector2I.Zero] = new OreBlock { Kind = MiningPlanet.Volatile, Hp = 1000, MaxHp = 1000, Value = 3 };
+                    _game.Planet.Blocks[Vector2I.Right] = new OreBlock { Kind = MiningPlanet.Volatile, Hp = 1000, MaxHp = 1000, Value = 3 };
+                    _game.Planet.Blocks[Vector2I.Down] = new OreBlock { Hp = 1, MaxHp = 1, Value = 3 };
+                    _game.Planet.Blocks[Vector2I.One] = new OreBlock { Hp = 1, MaxHp = 1, Material = 0, MaterialAmount = 2, Value = 7 };
+                    _game.Planet.Blocks[new Vector2I(4, 0)] = new OreBlock { Hp = 100, MaxHp = 100, Value = 2 };
+                    _game.Planet.TotalBlocks = 5; _game.Planet.RestoreMapExtent(); _game.Planet.NotifyTilesChanged();
+                    _game.ShipPosition = Main.Center + Vector2.Left * 88; _game.ShipAngle = 0; _game.ShotTimer = 0;
+                    _game.TargetKey = Vector2I.Zero;
+                    _game.Debris.Clear(); _game.Projectiles.Clear(); _game.Waves.Clear(); _game.Rings.Clear(); _game.Particles.Clear();
+                    _game.View.PlaceWorld(true);
                     break;
                 case "nova_wave_trial":
                     _game.Paused = false; _game.WarpTimer = 0;
@@ -191,6 +235,67 @@ public partial class QaBridge : Node
                     _game.TargetKey = Vector2I.Zero; _game.ShotTimer = 0;
                     _game.Waves.Clear(); _game.Projectiles.Clear(); _game.Debris.Clear();
                     _game.Fire(); _game.View.PlaceWorld(true); _game.Planet.NotifyTilesChanged();
+                    break;
+                case "laser_fixture":
+                    _game.ReleaseControls(); _game.Paused = false; _game.WarpTimer = 0;
+                    _game.SetAuto(false); _game.Hud.ClosePanel();
+                    _game.Equipment = EquipmentState.Fresh(); _game.Weapon = Main.ContinuousLaser; Array.Clear(_game.Levels);
+                    _game.Equipment.Weapons.Add(new CraftedWeapon { Id = 2, Type = Main.ContinuousLaser });
+                    _game.Equipment.NextId = 3; _game.Equipment.ShipWeaponId = 2;
+                    bool maxPower = request.TryGetProperty("max_power", out var maxBeam) && maxBeam.GetBoolean();
+                    if (maxPower)
+                    {
+                        _game.Sector = 4; _game.Planet.Generate(4); _game.Equipment.HighestSector = 7;
+                        _game.Equipment.Weapons[1].Level = _game.EquipmentLevelCap;
+                    }
+                    _game.Planet.Blocks.Clear(); _game.Planet.ClearSent = false;
+                    double beamHp = maxPower ? (_game.Planet.GenerationSettings.BaseHp + _game.Planet.GenerationSettings.HpDepthBonus * _game.Planet.GenerationSettings.RadiusForSector(4)) * _game.Planet.GenerationSettings.Toughness(4) : 1000;
+                    for (int y = maxPower ? 0 : -4; y <= (maxPower ? 0 : 4); y++)
+                    for (int x = 0; x <= (maxPower ? 149 : 4); x++)
+                        _game.Planet.Blocks[new Vector2I(x, y)] = new OreBlock { Hp = beamHp, MaxHp = beamHp, Value = 2 };
+                    _game.Planet.TotalBlocks = _game.Planet.Blocks.Count; _game.Planet.RestoreMapExtent(); _game.Planet.NotifyTilesChanged();
+                    _game.ShipPosition = Main.Center + Vector2.Left * 88; _game.ShipAngle = 0;
+                    _game.Waves.Clear(); _game.Projectiles.Clear(); _game.Debris.Clear(); _game.Beams.Clear();
+                    _game.View.PlaceWorld(true); _game.Hud.Refresh();
+                    break;
+                case "trapped_pocket":
+                    _game.ReleaseControls(); _game.Paused = false; _game.WarpTimer = 0;
+                    _game.SetAuto(true); _game.Hud.ClosePanel();
+                    _game.Equipment = EquipmentState.Fresh(); _game.Weapon = 0; Array.Clear(_game.Levels);
+                    _game.Planet.Blocks.Clear(); _game.Planet.ClearSent = false;
+                    for (int y = -7; y <= 7; y++)
+                    for (int x = -9; x <= 9; x++)
+                        if (!(Math.Abs(x) <= 2 && Math.Abs(y) <= 1) && !(x >= 3 && y == 0))
+                            _game.Planet.Blocks[new Vector2I(x, y)] = new OreBlock { Hp = 3.2, MaxHp = 3.2, Value = 2 };
+                    _game.Planet.TotalBlocks = _game.Planet.Blocks.Count; _game.Planet.RestoreMapExtent(); _game.Planet.NotifyTilesChanged();
+                    _game.ShipPosition = Main.Center; _game.ShipAngle = 0; _game.ShotTimer = 0;
+                    _game.ShipVelocity = Vector2.Zero; _game.Autopilot.Reset(0); _pilotOverlapFrames = _pilotCutFrames = 0;
+                    _game.Waves.Clear(); _game.Projectiles.Clear(); _game.Debris.Clear(); _game.Beams.Clear();
+                    _game.View.PlaceWorld(true); _game.Hud.Refresh();
+                    break;
+                case "carved_bay":
+                    _game.ReleaseControls(); _game.Paused = false; _game.WarpTimer = 0;
+                    _game.SetAuto(false); _game.Hud.ClosePanel();
+                    _game.Equipment = EquipmentState.Fresh(); _game.Weapon = 0; Array.Clear(_game.Levels);
+                    _game.Planet.Blocks.Clear(); _game.Planet.ClearSent = false;
+                    for (int y = -5; y <= 5; y++)
+                    for (int x = -3; x <= 9; x++)
+                        if (!(x < 0 && Math.Abs(y) < 3)) _game.Planet.Blocks[new Vector2I(x, y)] = new OreBlock { Hp = 2, MaxHp = 2, Value = 1.5 };
+                    _game.Planet.TotalBlocks = _game.Planet.Blocks.Count;
+                    _game.Planet.RestoreMapExtent(); _game.Planet.NotifyTilesChanged();
+                    _game.ShipPosition = Main.Center + Vector2.Left * 112; _game.ShipAngle = 0; _game.ShotTimer = 0;
+                    _game.ShipVelocity = Vector2.Zero; _game.Autopilot.Reset(0); _pilotOverlapFrames = 0;
+                    _game.Waves.Clear(); _game.Projectiles.Clear(); _game.Debris.Clear();
+                    _game.View.PlaceWorld(true); _game.Hud.Refresh();
+                    break;
+                case "planet_growth":
+                    int growthSector = Math.Clamp(request.GetProperty("sector").GetInt32(), 1, 1000);
+                    _game.ReleaseControls(); _game.Paused = false; _game.WarpTimer = 0;
+                    _game.Sector = growthSector; _game.Equipment.HighestSector = Math.Max(_game.Equipment.HighestSector, growthSector);
+                    _game.SetAuto(true); _game.Hud.ClosePanel();
+                    _game.Planet.Generate(growthSector); _game.PlaceShipAtOrbit();
+                    _game.Waves.Clear(); _game.Projectiles.Clear(); _game.Debris.Clear();
+                    _game.View.PlaceWorld(true); _game.Hud.Refresh();
                     break;
                 case "sparse_autopilot":
                     // Isolated QA reproduction of a final outer-edge block, never player data.
@@ -208,6 +313,7 @@ public partial class QaBridge : Node
                     _game.Planet.ClearSent = false;
                     _game.Planet.NotifyTilesChanged();
                     _game.ShipPosition = Main.Center + Vector2.Left * 600;
+                    _game.ShipAngle = 0; _game.Autopilot.Reset(0);
                     _game.ShipVelocity = Vector2.Zero;
                     _game.View.PlaceWorld(true);
                     _game.Hud.Refresh();
@@ -234,7 +340,11 @@ public partial class QaBridge : Node
                 case "advance_simulation":
                     float simulation = Math.Clamp(request.GetProperty("seconds").GetSingle(), 0, 5);
                     for (float remaining = simulation; remaining > 0; remaining -= 1f / 60)
+                    {
                         _game.Step(Math.Min(remaining, 1f / 60));
+                        if (_game.Autopilot.State == AutopilotSteering.Behavior.Widen) _pilotCutFrames++;
+                        if (_game.AutoMode && _game.WarpTimer <= 0 && _game.Planet.ContainsPoint(_game.ShipPosition - Main.Center, AutopilotSteering.HullPadding)) _pilotOverlapFrames++;
+                    }
                     break;
                 case "resize":
                     GetWindow().Size = new Vector2I(Math.Clamp(request.GetProperty("width").GetInt32(), 320, 1920), Math.Clamp(request.GetProperty("height").GetInt32(), 320, 1920));
@@ -296,6 +406,9 @@ public partial class QaBridge : Node
                     await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
                     foreach (var child in _game.View.Stage.GetChildren())
                         if (child is CanvasItem item) item.QueueRedraw();
+                    // CanvasItem redraws are deferred. Let their commands update before
+                    // forcing an occluded macOS window to render the current fixture.
+                    await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
                     RenderingServer.ForceDraw(false);
                     using (var image = GetViewport().GetTexture().GetImage())
                     {

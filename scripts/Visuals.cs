@@ -7,10 +7,10 @@ public partial class Visuals : Node2D
 {
     public Main Game { get; set; } = null!;
     private VisualPalette Palette => Game.Palette;
-    private readonly Vector2[] _shard = new Vector2[4];
     private static readonly Vector2[] Hull = [new(15, 0), new(-11, -8), new(-6, 0), new(-11, 8), new(15, 0)];
     private static readonly Vector2[] Fill = [new(15, 0), new(-11, -8), new(-6, 0), new(-11, 8)];
     private static readonly Vector2[] Directions = [new(-1, -1), new(1, -1), new(-1, 1), new(1, 1)];
+    private readonly Vector2[] _novaFill = new Vector2[64], _novaRim = new Vector2[65];
 
     public override void _Draw()
     {
@@ -18,16 +18,48 @@ public partial class Visuals : Node2D
         foreach (var ring in g.Rings)
         {
             float t = 1 - ring.Life / ring.MaxLife;
-            DrawArc(ring.Position, Mathf.Lerp(ring.Start, ring.Finish, t), 0, Mathf.Tau, 40, new Color(ring.Color, (1 - t) * 0.28f), 1, true);
+            float strength = ring.Strength > 0 ? ring.Strength : 0.28f;
+            float expansion = strength > 0.5f ? Mathf.Min(t * 3, 1) : t;
+            float radius = Mathf.Lerp(ring.Start, ring.Finish, expansion);
+            if (strength > 0.5f) DrawCircle(ring.Position, radius, new Color(ring.Color, (1 - t) * 0.12f));
+            DrawArc(ring.Position, radius, 0, Mathf.Tau, 40, new Color(ring.Color, (1 - t) * strength), strength > 0.5f ? 2 : 1, true);
         }
         foreach (var wave in g.Waves)
         {
             float t = Mathf.Clamp(wave.Age / wave.Duration, 0, 1);
             float radius = wave.Radius * t;
             var ink = Palette.Weapon(3);
-            DrawArc(wave.Position, radius, 0, Mathf.Tau, 64, new Color(ink, (1 - t) * 0.15f), 9, true);
-            DrawArc(wave.Position, radius, 0, Mathf.Tau, 64, new Color(ink, (1 - t) * 0.85f), 1.5f, true);
-            if (radius > 5) DrawArc(wave.Position, radius - 5, 0, Mathf.Tau, 64, new Color(ink, (1 - t) * 0.22f), 0.8f, true);
+            if (radius < 0.1f) continue;
+            for (int point = 0; point < 64; point++)
+            {
+                float angle = point * Mathf.Tau / 64;
+                float roughness = 0.96f + 0.02f * Mathf.Sin(angle * 11 + wave.Age * 6) + 0.02f * Mathf.Sin(angle * 23 - wave.Age * 9);
+                _novaFill[point] = _novaRim[point] = wave.Position + Vector2.FromAngle(angle) * radius * roughness;
+            }
+            _novaRim[64] = _novaRim[0];
+            DrawColoredPolygon(_novaFill, new Color(ink, (1 - t) * 0.16f));
+            DrawPolyline(_novaRim, new Color(ink, (1 - t) * 0.16f), 6, true);
+            DrawPolyline(_novaRim, new Color(ink.Lightened(0.35f), (1 - t) * 0.9f), 1.5f, true);
+            for (int echo = 1; echo <= 3; echo++)
+            {
+                float echoRadius = wave.Radius * (t - echo * 0.13f);
+                if (echoRadius > 0) DrawArc(wave.Position, echoRadius, 0, Mathf.Tau, 64, new Color(ink, (1 - t) * (0.55f - echo * 0.1f)), 1, true);
+            }
+        }
+        if (!g.Paused && !g.Hud.BlocksWorldInput)
+        for (int slot = 0; slot < g.LaserBeams.Length; slot++)
+        {
+            var laser = g.LaserBeams[slot];
+            if (!laser.Active || slot < 3 && !g.AutoMode && !g.Navigation.Active) continue;
+            var ink = Palette.Weapon(Main.ContinuousLaser);
+            DrawLine(laser.Origin, laser.End, new Color(ink, 0.10f), 8, true);
+            DrawLine(laser.Origin, laser.End, new Color(ink, 0.5f), 3, true);
+            DrawLine(laser.Origin, laser.End, ink.Lightened(0.7f), 1, true);
+            if (laser.Hit)
+            {
+                DrawCircle(laser.End, 4, new Color(ink, 0.14f));
+                DrawCircle(laser.End, 1.5f, ink.Lightened(0.7f));
+            }
         }
         foreach (var beam in g.Beams)
             DrawPolyline(beam.Points, new Color(beam.Color, Mathf.Clamp(beam.Life / beam.MaxLife, 0, 1) * 0.8f), 1.5f, true);
@@ -40,42 +72,21 @@ public partial class Visuals : Node2D
         {
             var art = g.CurrentVisualStyle;
             var color = art.Treatment == PlanetVisualStyle.Surface.FlatGrid ? Palette.Debris(fragment.Kind) : art.DamagedColor(fragment.Kind, Palette);
+            if (fragment.Kind == MiningPlanet.Stone) color = PlanetRenderer.TerrainColor(color, g.Planet.Sector);
             if (fragment.Material >= 0) color = g.Catalog.MaterialColors[fragment.Material];
             float size = fragment.Size;
             if (fragment.Material >= 0)
             {
-                var p = fragment.Position;
-                if (fragment.Material == 0)
-                    for (int bar = -1; bar <= 1; bar++) DrawLine(p + new Vector2(bar * 2, -3), p + new Vector2(bar * 2, 3), color, 1, true);
-                else if (fragment.Material == 1)
-                {
-                    DrawRect(new Rect2(p - Vector2.One * 3, Vector2.One * 6), color, false, 1);
-                    DrawRect(new Rect2(p - Vector2.One, Vector2.One * 2), color, false, 1);
-                }
-                else
-                {
-                    DrawArc(p, 3.5f, -1.2f, 1.2f, 10, color, 1, true);
-                    DrawArc(p, 3.5f, 1.94f, 4.34f, 10, color, 1, true);
-                    DrawCircle(p, 1.2f, color);
-                }
+                DrawCircle(fragment.Position, size * 1.4f, new Color(color, 0.12f));
+                DrawRect(new Rect2(fragment.Position - Vector2.One * 1.4f, Vector2.One * 2.8f), new Color(color, 0.95f));
             }
-            else if (art.Treatment is PlanetVisualStyle.Surface.NeonFrontier or PlanetVisualStyle.Surface.Abyssal)
+            else if (art.Treatment == PlanetVisualStyle.Surface.NeonFrontier)
             {
                 DrawCircle(fragment.Position, size * 1.3f, new Color(color, art.GlowStrength * 0.3f));
                 DrawCircle(fragment.Position, size * 0.6f, new Color(color, 0.9f));
                 if (art.Treatment == PlanetVisualStyle.Surface.NeonFrontier && fragment.Value > 0)
                     DrawArc(fragment.Position, size + 1, 0, Mathf.Tau, 10, new Color(color, 0.55f), 0.7f, true);
             }
-            else if (art.Treatment is PlanetVisualStyle.Surface.Prism or PlanetVisualStyle.Surface.Fractured or PlanetVisualStyle.Surface.Solar)
-            {
-                _shard[0] = fragment.Position + Vector2.Up * size;
-                _shard[1] = fragment.Position + Vector2.Right * size * 0.65f;
-                _shard[2] = fragment.Position + Vector2.Down * size;
-                _shard[3] = fragment.Position + Vector2.Left * size * 0.65f;
-                DrawColoredPolygon(_shard, new Color(color, 0.8f));
-            }
-            else if (art.Treatment == PlanetVisualStyle.Surface.Survey)
-                DrawRect(new Rect2(fragment.Position - Vector2.One * size * 0.5f, Vector2.One * size), new Color(color, 0.8f), false, 0.8f);
             else DrawRect(new Rect2(fragment.Position - Vector2.One * size * 0.5f, Vector2.One * size), new Color(color, 0.8f));
             if (fragment.Age > 0.22f) DrawLine(fragment.Position, fragment.Position - fragment.Velocity.Normalized() * 4, new Color(color, 0.18f), 1, true);
         }
@@ -93,6 +104,14 @@ public partial class Visuals : Node2D
         {
             var target = Main.Center + MiningPlanet.KeyPoint(g.TargetKey);
             var c = new Color(Palette.Weapon(g.Weapon), 0.6f);
+            if (MiningPlanet.IsExplosive(g.Planet.Blocks[g.TargetKey]))
+            {
+                float radius = g.Planet.GenerationSettings.ExplosiveRadius;
+                var warning = new Color("ff7161");
+                DrawCircle(target, radius, new Color(warning, 0.055f));
+                for (int dash = 0; dash < 12; dash++)
+                    DrawArc(target, radius, dash * Mathf.Tau / 12, (dash + 0.65f) * Mathf.Tau / 12, 4, new Color(warning, 0.6f), 1, true);
+            }
             foreach (var direction in Directions)
             {
                 var p = target + direction * 9;

@@ -133,9 +133,11 @@ public sealed class SaveStore(string path)
                 game.Planet.Blocks.Clear();
                 foreach (var pair in restored) game.Planet.Blocks.Add(pair.Key, pair.Value);
                 game.Planet.TotalBlocks = Math.Max(restored.Count, data.TotalBlocks ?? game.Planet.TotalBlocks);
+                game.Planet.RestoreMapExtent();
                 game.Planet.NotifyTilesChanged();
             }
             game.WarpTimer = 0;
+            game.Autopilot.Reset(game.ShipAngle);
             game.Equipment.HighestSector = Math.Max(game.Equipment.HighestSector, game.Sector);
             foreach (var drone in game.Equipment.Drones) { drone.Position = game.ShipPosition; drone.Docked = drone.Recalling; }
             game.Waves.Clear();
