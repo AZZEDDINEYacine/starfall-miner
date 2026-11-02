@@ -5,6 +5,7 @@ namespace StarfallMiner;
 public partial class Main
 {
     [Export] public CraftingCatalog Catalog { get; set; } = null!;
+    [Export] public ProgressionTuning Progression { get; set; } = null!;
     public EquipmentState Equipment { get; set; } = EquipmentState.Fresh();
     public string EquipmentMessage { get; private set; } = "Mine deep deposits or buy materials at the market.";
     public int EngineeringRank
@@ -13,7 +14,7 @@ public partial class Main
         {
             int rank = 1;
             for (int i = 0; i < Catalog.RankSectors.Length; i++)
-                if (Equipment.HighestSector >= Catalog.RankSectors[i]) rank = i + 1;
+                if (Equipment.HighestSector >= Catalog.RankSectors[i] || i < Catalog.RankMiningMilestones.Length && TotalMined >= Catalog.RankMiningMilestones[i]) rank = i + 1;
             return rank;
         }
     }
@@ -23,6 +24,8 @@ public partial class Main
     {
         get
         {
+            if (Equipment.Weapons.Count == 1 && Equipment.Weapons[0].Level == 0) return $"First upgrade: Power costs {Compact(WeaponUpgradeCost(Equipment.Weapons[0]))} CR in Fleet → Weapons.";
+            if (Equipment.Weapons.Count == 1 && Equipment.Weapons[0].RateLevel == 0) return $"Add Fire Rate for {Compact(FireRateUpgradeCost(Equipment.Weapons[0]))} CR, then save for a Nova cannon.";
             if (Equipment.Weapons.Count == 1) return "Craft a Nova cannon: find Titanium in the mantle, or buy it at the market.";
             if (Equipment.Drones.Count == 0) return "Craft a Scout drone, then fit a spare weapon in Fleet.";
             bool armed = false;
@@ -32,9 +35,9 @@ public partial class Main
             foreach (var drone in Equipment.Drones) deployed |= !drone.Docked && !drone.Recalling;
             if (!deployed) return "Deploy an armed drone from Fleet. Recall it for upgrades and refitting.";
             if (Equipment.HardpointLevel < Math.Min(2, EngineeringRank - 1)) return "Install another mothership hardpoint in Ship, then fit a reserve weapon beside your primary.";
-            if (EngineeringRank == 1) return "Clear planet 1: rank 2 unlocks a second ship mount, Ion and Nova wave.";
-            if (EngineeringRank == 2) return "Reach sector 4: unlock the third ship mount, Bore laser and Atlas drones.";
-            if (EngineeringRank == 3) return "Reach sector 7 for rank 4 and higher equipment upgrade limits.";
+            if (EngineeringRank == 1) return $"Mine {Math.Max(0, Catalog.RankMiningMilestones[1] - TotalMined)} more rocks or reach sector 2: unlock a second ship mount, Ion and Nova wave.";
+            if (EngineeringRank == 2) return $"Mine {Math.Max(0, Catalog.RankMiningMilestones[2] - TotalMined)} more rocks or reach sector 4 for the third ship mount and advanced blueprints.";
+            if (EngineeringRank == 3) return $"Mine {Math.Max(0, Catalog.RankMiningMilestones[3] - TotalMined)} more rocks or reach sector 7 for rank 4.";
             return "Upgrade your fleet and push into richer sectors. Deep deposits fund new builds.";
         }
     }
@@ -53,7 +56,7 @@ public partial class Main
     {
         if (recipeIndex < 0 || recipeIndex >= Catalog.Recipes.Count) return false;
         var recipe = Catalog.Recipes[recipeIndex];
-        if (recipe.Type < 0 || recipe.Type > (recipe.Drone ? 2 : 4) || recipe.Rank < 1 || !double.IsFinite(recipe.Credits) || recipe.Credits < 0 ||
+        if (recipe.Type < 0 || recipe.Type > (recipe.Drone ? 2 : Weapons.Length - 1) || recipe.Rank < 1 || !double.IsFinite(recipe.Credits) || recipe.Credits < 0 ||
             recipe.Titanium < 0 || recipe.Iridium < 0 || recipe.Aether < 0)
             return EquipmentResult(false, "This recipe is unavailable.");
         if (EngineeringRank < recipe.Rank) return EquipmentResult(false, $"Requires engineering rank {recipe.Rank}.");
@@ -95,8 +98,21 @@ public partial class Main
         return EquipmentResult(true, $"{(buy ? "Bought" : "Sold")} {quantity} {Catalog.MaterialNames[kind]} for {Compact(cost)} CR.");
     }
 
-    public double WeaponUpgradeCost(CraftedWeapon item) => Math.Floor((160 + item.Type * 200) * Math.Pow(item.Level + 1, 1.9));
-    public double DroneUpgradeCost(MiningDrone drone) => Math.Floor((380 + drone.Type * 450) * Math.Pow(drone.Level + 1, 1.9));
+    public double WeaponUpgradeCost(CraftedWeapon item) => Progression.Cost(item.Level, item.Type, Progression.EarlyPowerCosts, Progression.LaterPowerBase);
+    public double FireRateUpgradeCost(CraftedWeapon item) => Progression.Cost(item.RateLevel, item.Type, Progression.EarlyRateCosts, Progression.LaterRateBase);
+    public bool UpgradeFireRate(int id)
+    {
+        var item = Equipment.FindWeapon(id);
+        if (item == null) return false;
+        if (!WeaponServiceable(id)) return EquipmentResult(false, "Recall the drone and wait for docking before tuning its weapon.");
+        if (item.RateLevel >= EquipmentLevelCap) return EquipmentResult(false, "Fire-rate rank limit reached. Clear more sectors.");
+        double cost = FireRateUpgradeCost(item);
+        if (Credits < cost) return EquipmentResult(false, "Not enough credits for this fire-rate upgrade.");
+        Credits -= cost;
+        item.RateLevel++;
+        return EquipmentResult(true, $"{Main.Weapons[item.Type]} fire rate LV {item.RateLevel}. +{Math.Round((FireRateBonus(item.RateLevel) - 1) * 100)}% cadence from rate tuning.");
+    }
+    public double DroneUpgradeCost(MiningDrone drone) => Progression.Cost(drone.Level, drone.Type, Progression.EarlyDroneCosts, Progression.LaterDroneBase);
     public bool UpgradeEquipment(int id, bool drone)
     {
         var unit = drone ? Equipment.FindDrone(id) : null;
@@ -112,7 +128,7 @@ public partial class Main
         if (unit != null) unit.Level++; else item!.Level++;
         return EquipmentResult(true, unit != null ?
             $"{Catalog.Chassis(unit.Type).Title} upgraded to LV {unit.Level}. Mount power and firing rate improved." :
-            $"{Main.Weapons[item!.Type]} upgraded to LV {item.Level}. Weapon power and firing rate improved.");
+            $"{Main.Weapons[item!.Type]} Power LV {item.Level}: +{Math.Round((WeaponPower(item.Level) - 1) * 100)}% damage.");
     }
 
     public bool EquipShip(int weaponId)
@@ -158,6 +174,7 @@ public partial class Main
     }
 
     private int ShipWeaponLevel => Equipment.FindWeapon(Equipment.ShipWeaponId) is { } item && item.Type == Weapon ? item.Level : 0;
+    private int ShipRateLevel => Equipment.FindWeapon(Equipment.ShipWeaponId) is { } item && item.Type == Weapon ? item.RateLevel : 0;
     public bool HasShipWeaponType(int type)
     {
         foreach (var item in Equipment.Weapons)
@@ -166,11 +183,12 @@ public partial class Main
     }
 
     public int ShipHardpoints => 1 + Equipment.HardpointLevel;
-    public double HardpointCost => Equipment.HardpointLevel == 0 ? 2400 : 9500;
+    public double HardpointCost => Equipment.HardpointLevel == 0 ? Progression.SecondHardpointCost : Progression.ThirdHardpointCost;
     public bool BuyHardpoint()
     {
         if (Equipment.HardpointLevel >= 2) return EquipmentResult(false, "All three mothership hardpoints installed.");
         if (EngineeringRank < Equipment.HardpointLevel + 2) return EquipmentResult(false, "Reach the next engineering rank to install this hardpoint.");
+        if (!double.IsFinite(HardpointCost) || HardpointCost < 0) return EquipmentResult(false, "This hardpoint expansion is unavailable.");
         if (Credits < HardpointCost) return EquipmentResult(false, "Not enough credits for a hardpoint expansion.");
         Credits -= HardpointCost; Equipment.HardpointLevel++;
         return EquipmentResult(true, "Hardpoint installed. Fit a reserve weapon beside your primary in Fleet.");
@@ -209,7 +227,7 @@ public partial class Main
         var drone = Equipment.FindDrone(id);
         if (drone == null) return false;
         if (drone.WeaponId == 0) return EquipmentResult(false, "Fit a weapon before deploying this drone.");
-        drone.Recalling = drone.Docked = false; drone.Target = MiningPlanet.NoTarget;
+        drone.Recalling = drone.Docked = false; drone.Target = MiningPlanet.NoTarget; drone.TransferLeft = 0;
         return EquipmentResult(true, "Drone deployed on an independent mining route.");
     }
     private bool _serviceDockChanged;
@@ -219,8 +237,9 @@ public partial class Main
         EquipmentMessage = "Fleet recall transmitted. Service becomes available after docking.";
         Hud.RefreshInventory();
     }
-    public static double WeaponPower(int level) => 1 + Math.Min(level, 50) * 0.08;
+    public double WeaponPower(int level) => 1 + Math.Clamp(level, 0, 50) * Progression.PowerGainPerLevel;
     public static float WeaponRate(int level) => 1 + Math.Min(level, 50) * 0.012f;
+    public static float FireRateBonus(int level) => 1 + Math.Min(level, 3) * 0.10f + Math.Max(0, Math.Min(level, 50) - 3) * 0.02f;
     private readonly float[] _auxTimers = new float[2];
     private void FireAuxiliaries(float delta)
     {
@@ -228,16 +247,42 @@ public partial class Main
         {
             _auxTimers[i] -= delta;
             var item = Equipment.FindWeapon(Equipment.ShipAuxWeaponIds[i]);
-            if (item == null || _auxTimers[i] > 0 || WarpTimer > 0 || Hud.BlocksWorldInput || !AutoMode && !Navigation.ClearingPath) continue;
+            if (item?.Type == ContinuousLaser)
+            {
+                var aim = AutoMode ? Vector2.FromAngle(ShipAngle) : (Navigation.Destination - ShipPosition).Normalized();
+                UpdateShipLaser(i + 1, item, ShipPosition + new Vector2(-aim.Y, aim.X) * (i == 0 ? -10 : 10), delta);
+                continue;
+            }
+            if (item == null || _auxTimers[i] > 0 || WarpTimer > 0 || Hud.BlocksWorldInput || (AutoMode ? !Autopilot.CanFire : !Navigation.ClearingPath)) continue;
             var key = TargetKey;
             if (!Planet.Blocks.ContainsKey(key)) continue;
             var target = Center + MiningPlanet.KeyPoint(key);
             if (ShipPosition.DistanceTo(target) > WeaponRange) continue;
-            _auxTimers[i] = WeaponCooldown(item.Type, item.Level) / (AutoMode ? 1 : ManualFireRateMultiplier);
+            _auxTimers[i] = WeaponCooldown(item.Type, item.Level, item.RateLevel) / (AutoMode ? 1 : ManualFireRateMultiplier);
             var direction = (target - ShipPosition).Normalized();
-            EmitWeapon(item.Type, ShipPosition + new Vector2(-direction.Y, direction.X) * (i == 0 ? -10 : 10), target, key, direction, DamageMultiplier * WeaponPower(item.Level));
+            EmitWeapon(item.Type, ShipPosition + new Vector2(-direction.Y, direction.X) * (i == 0 ? -10 : 10), target, key, direction, ShipDamageMultiplier * WeaponPower(item.Level));
         }
     }
+    // Independent drones retain their outside transfer routes. The mothership's
+    // local-perception pilot never consults this planet-wide routing helper.
+    private Vector2 CruiseDrone(Vector2 position, float delta)
+    {
+        var radial = (position - Center).Normalized();
+        if (radial.LengthSquared() < 0.1f) radial = Vector2.Up;
+        float clearance = Planet.SurfaceRadius(radial.Angle()) + 65;
+        if (position.DistanceTo(Center) < clearance - 2)
+        {
+            var climb = position.MoveToward(Center + radial * clearance, AutopilotSteering.MaxSpeed * delta);
+            return !Planet.ContainsPoint(climb - Center, 8) ? climb : position;
+        }
+        float angle = radial.Angle() + 0.23f;
+        var destination = Center + Vector2.FromAngle(angle) * (Planet.SurfaceRadius(angle) + 65);
+        var next = position.MoveToward(destination, AutopilotSteering.MaxSpeed * delta);
+        if (!Planet.ContainsPoint(next - Center, 8)) return next;
+        next = position + radial * AutopilotSteering.MaxSpeed * delta;
+        return !Planet.ContainsPoint(next - Center, 8) ? next : position;
+    }
+
     private void UpdateDrones(float delta, bool serviceOnly = false)
     {
         _serviceDockChanged = false;
@@ -278,21 +323,32 @@ public partial class Main
             if (radial.LengthSquared() < 0.1f) radial = Vector2.Up;
             var desired = target + radial * 58;
             var candidate = drone.Position.MoveToward(desired, (85 + drone.Level * 2) * delta);
-            if (!Planet.ContainsPoint(candidate - Center, 8)) drone.Position = candidate;
+            drone.TransferLeft = Mathf.Max(0, drone.TransferLeft - delta);
+            if (drone.TransferLeft > 0) drone.Position = CruiseDrone(drone.Position, delta);
+            else if (!Planet.ContainsPoint(candidate - Center, 8)) drone.Position = candidate;
             else
             {
-                drone.Position = AutopilotSteering.Advance(drone.Position, Center, Planet, delta);
+                // Commit to clearing the lip before retrying the direct approach.
+                drone.TransferLeft = 2;
+                drone.Position = CruiseDrone(drone.Position, delta);
                 drone.Target = Planet.Nearest(drone.Position - Center);
                 target = Center + MiningPlanet.KeyPoint(drone.Target);
             }
             drone.Angle = (target - drone.Position).Angle();
             drone.ShotTimer -= delta;
-            if (drone.ShotTimer > 0 || drone.Position.DistanceTo(target) > Mathf.Min(WeaponRange, chassis.Range)) continue;
+            if ((item.Type != ContinuousLaser && drone.ShotTimer > 0) || drone.Position.DistanceTo(target) > Mathf.Min(WeaponRange, chassis.Range)) continue;
             // Intercept the first rock along the beam; never mine through intact terrain.
             var key = RayTarget(drone.Position, target);
             if (!Planet.Blocks.ContainsKey(key)) continue;
             target = Center + MiningPlanet.KeyPoint(key);
-            drone.ShotTimer = WeaponCooldown(item.Type, item.Level) / (chassis.FireRate * (1 + drone.Level * 0.01f));
+            if (item.Type == ContinuousLaser)
+            {
+                UpdateLaser(3 + Equipment.Drones.IndexOf(drone), drone.Position, target - drone.Position,
+                    DamageMultiplier * WeaponPower(item.Level) * chassis.Power * (1 + drone.Level * 0.05),
+                    BaseCooldown[ContinuousLaser] / WeaponCooldown(item.Type, item.Level, item.RateLevel) * chassis.FireRate * (1 + drone.Level * 0.01f), delta);
+                continue;
+            }
+            drone.ShotTimer = WeaponCooldown(item.Type, item.Level, item.RateLevel) / (chassis.FireRate * (1 + drone.Level * 0.01f));
             EmitWeapon(item.Type, drone.Position, target, key, (target - drone.Position).Normalized(),
                 DamageMultiplier * WeaponPower(item.Level) * chassis.Power * (1 + drone.Level * 0.05));
         }

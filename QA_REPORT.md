@@ -1,4 +1,153 @@
-# Starfall Miner — technical designs, neon ignition, ship mounts and independent drones
+# Starfall Miner — substantial Power progression and sustained laser audio
+
+Power now adds **60% of base damage per level** across all six weapons: 4× at level 5 and 13× at level 20, replacing the old 1.68×/2.28× multipliers. Rank caps, saved item levels, separate Rate tuning, docking rules and prices remain intact. Flux beam base output doubles to 6.8 damage/s; Ion hits rise from 1.6 to 3.2 and Bore from 2.6 to 4.4, preserving chain/rare-armor behavior. Fresh Photon remains 1.1 damage; cannon and Nova retain their area damage bases. Values are authored in `resources/progression.tres` and workshop Power readouts use the same resource-backed multiplier.
+
+Laser damage remaining after a destruction now continues onto the newly exposed first-hit face within the same frame, with a 32-iteration cap. It cannot damage through surviving terrain, and aim remains precisely aligned with the held pointer. This prevents overkill and frame-rate limits from erasing high-level output.
+
+Measured with real held touch and production movement/damage, no Rate levels, shared combat upgrades or overdrive:
+
+| Power / reference world | Ordinary block HP | Destroyed in 10 s at 15 / 30 / 60 fps |
+| --- | --- | --- |
+| Level 5 / sector 1, deepest ordinary stone | 16.70 | 41 / 41 / 41 |
+| Level 20 / sector 4, deepest ordinary stone | 59.60 | 44 / 44 / 44 |
+
+These are manual-mining throughput floors on reference ordinary rock, not four guaranteed rare/deep late-sector deposits per second. Fire Rate upgrades can increase output further. Remaining geology and growing sector resistance are unchanged; exact saved health is not rewritten.
+
+A single dedicated audio voice now sustains a generated 0.2-second, 22.05-kHz PCM loop (about 8.8 KB). Harmonic carrier/shimmer frequencies have integer loop periods; one voice covers all active primary/auxiliary/drone beams without restarting every frame. Release/control cancellation, pause and mute stop it immediately; unmuting resumes a still-held beam. Muting also stops currently playing one-shot voices.
+
+Validation:
+
+- `python3 tools/dev.py test-rendered`: **366 checks, zero failures**, compiler zero warnings/errors. Log: `builds/qa/weapon-output-regression.log`. Includes the six measured throughput cases, real per-weapon 13× output through all six firing behaviors, equal frame-rate-integrated beam damage, pointer precision/first-face occlusion, sustained-loop single start, release/mute/unmute/pause stops, and all prior save/crafting/docking/input/pilot regressions. The old aiming fixture's destination was outside the viewport at full manual zoom; it now keeps the held point inside the phone window while still testing off-center navigation snapping.
+- `python3 tools/rendered_check.py`: **108 rendered input checks passed**, log `builds/qa/weapon-output-live.log`. The live Power-20/Rate-0 fixture mines at least 40 deep sector-four rocks in ten seconds, stays on exactly one audio loop start, and stops audio on release. Existing scaled engine-mouse, touch/drag, menu, recall, exact pickup and terrain-handoff checks pass. Live runtime logs have no errors/warnings. Malformed-save warnings in the regression suite are intentional rejection tests.
+- `python3 tools/dev.py balance --label weapon-output --minutes 60`: completed. Guided automatic plan reaches cannon **0:40**, armed Scout **2:30**, second ship weapon **5:30**, Nova **9:15**, third hardpoint **18:10**, sector 2 around **29:15**. It ends with three fitted weapons, one drone and 316 sector-two blocks remaining. Artifacts: `builds/qa/balance-weapon-output.json` and corresponding log. This is a fixed purchase plan with real transactions, not optimal play/full campaign proof.
+- Inspected `builds/qa/laser-max-power-mining.png` and `onboarding-starter-upgrades.png`: exact straight beam/contact, ongoing held mining and readable +60% Power feedback remain visible. Python syntax and `git diff --check` pass.
+- All persistence/inspection stayed in isolated test state. No player save was accessed; no APK/AAB or native package was built. Audio validation checks the actual engine loop state and restart count; speaker/headphone listening quality and physical Android audio/performance have not been evaluated. Rendered checks are desktop/injected input, not physical phone testing.
+
+---
+
+# Historical: pause-menu test funds
+
+Pause now includes **TEST / +1B CR**, with the current wallet shown on the button. Each activation adds exactly 1,000,000,000 credits and uses the normal save path in ordinary play. Grants do not change mining income, lifetime earnings, research, materials or terrain. The pause card is taller to keep the new action separate from Resume and reset controls.
+
+- Local C# build passed with zero warnings/errors: `builds/qa/test-credit-button-build.log`.
+- Six targeted rendered checks passed: phone-sized control separation, canceled touch grants nothing, one-billion single-touch grant despite synthesized mouse events, retained pause/terrain/research, repeat grants, and isolated test storage. Log: `builds/qa/test-credit-button-live.log`. No new automated regression suite was added for this small UI action.
+- Inspected `builds/qa/test-credit-button.png`: the action and updated 2.0B wallet fit at 390×844. Runtime log is clean; `git diff --check` passes. This was injected desktop touch, not physical Android testing. No player save was accessed and no APK/AAB was built.
+
+---
+
+# Historical: pocket clearance, precise continuous laser and earlier weapons
+
+The local autopilot now has a clearance watchdog. If the preferred mining stand-off cannot be reached and positional progress stays below 12 units for 1.1 seconds, it cuts exposed forward first-hit faces from the available position. The normal retreat still runs first. This widens a tight pocket rather than waiting indefinitely; it does not use a planet/global exit map, hidden ore or the minimap. Swept collision, speed bounds, occlusion and heading alignment stay enforced, including inherited overlap recovery.
+
+Flux beam is added as weapon type 5 without changing existing IDs. It crafts at rank one for 35 CR + one Titanium (115 CR with market material), and uses time-integrated 3.4 base damage/s. In manual mode the direction passes precisely through the held pointer independently of navigation's obstacle-center aim and the ship's turn. Exact grid traversal ends the beam on the first actual tile face. It stays continuous on every held frame and extinguishes immediately on release/cancellation, modal opening or control reset. Power, Rate, overdrive and the 2.4× manual ship bonus apply; auxiliary and independently mining drone mounts use the same continuous behavior. No beam state is persisted, and older v1 saves retain their IDs/defaults.
+
+Cannon is now 50 CR + one Titanium; Ion 180 CR + two Titanium; Nova wave 400 CR + three Titanium + one Iridium; Bore 2,400 CR + five Titanium + two Iridium + one Aether. Nova no longer waits on deep Aether. Research thresholds become 0/150/1,200/5,000 mined rocks or sectors 1/2/4/7. Later upgrade curves and planet toughness still rise. In the fixed guided automatic 60-minute profile, cannon arrives at **0:45**, armed Scout at **2:55**, second fitted weapon at **7:20** and Nova wave at **10:55**; prior measurements were 2:20, 4:45, 11:45 and 22:40. Sector two begins around 42:20. These are current seeded production-simulation measurements with actual purchases, not a guarantee for every play style or an isolated attribution to prices alone.
+
+Nova wave now uses translucent blue fill, a rough luminous boundary and three trailing outward circles. Two reused drawing buffers serve all active waves; the circular expanding damage front, falloff and one-hit-per-block behavior remain. Both terrain designs change rock/damage-rim/common-debris hue between sectors using a deterministic sector-derived shift. Material, resource and red-charge color identities stay fixed; style resources and geology are not mutated.
+
+Validation:
+
+- `python3 tools/dev.py test-rendered`: **349 checks, zero failures**, build zero warnings/errors. `builds/qa/beam-clearance-regression.log`. The tight chamber with a one-cell exit reproduces zero mining for 12 seconds when clearance recovery is disabled. Enabled recovery cuts 17–18 cells and moves over 37 units in 40 simulated seconds at 15/30/60 fps, with no hull overlap or speed-bound violations. Existing local pilot, sparse remnants and manually carved handoff checks still pass.
+- Beam checks use real Viewport-held touch/drag: exact pointer alignment despite navigation snapping, first-face clipping with an untouched block behind it, empty-space aim, uninterrupted stationary-thumb frames, equal 30/60-fps damage, immediate release/cancellation/modal stop, real auxiliary/drone mining, pause isolation, atomic crafting and v1 round-trip. Existing older save fixtures and transaction rejection checks pass; malformed-save warnings are intentional.
+- `python3 tools/rendered_check.py`: **105 rendered input checks passed**, `builds/qa/beam-clearance-live.log`. Includes the trapped-pocket reproduction, exact beam touch/drag, canceled release, engine mouse hold/release at scaled desktop size, three distinct sector hues, and all previous workshop, drone, pickup and handoff checks. Live/runtime logs contain no errors or warnings.
+- `python3 tools/dev.py balance --label faster-weapons --minutes 60`: completed with production simulation and isolated no-save state. Report: `builds/qa/balance-faster-weapons.json`; log: `balance-faster-weapons.log`. The plan ends in sector 2 with three fitted ship weapons and one drone. It selects the cannon rather than the alternative cheap Flux beam. Campaign balance still needs human testing.
+- Inspected `trapped-pocket-before.png`, `trapped-pocket-widened.png`, `flux-beam-held.png`, `flux-beam-drag.png`, `nova-expanding-wave.png`, `minimap-growing-sector-2.png` and `minimap-growing-sector-4.png` under `builds/qa/`. The pocket visibly widens, the beam is a straight persistent line with a first-face hot spot, Nova shows blue translucency/rough edge/concentric fronts, and the planets show blue versus amber rock with unchanged ore colors.
+- Python syntax and `git diff --check` pass. No player save was accessed. Rendered checks use desktop windows and injected touch/mouse, not physical Android hardware. No APK/AAB or native package was built. Physical-phone performance and exhaustive escape behavior for all concavities are not established by this suite.
+
+---
+
+# Historical: color-coded cells and visible impact charges
+
+Only Clean Frontier (Default) and Original (Classic Grid) remain selectable. The other 15 presets and their rendering branches have been removed; a saved removed style ID falls back to Default without changing terrain, health, wallet or pending rewards.
+
+Resources replace their full grid square with a colored face and thin perimeter. Identifying glyphs, stripes and inset rock badges are gone. Titanium and gold remain plain; Iridium, Aether, crystal, core and charge cells share a simplified hot core with two circulating plasma particles. Color distinguishes materials. Animation pauses with the world, culls offscreen cells and caps orbiting particles at 128 without per-cell nodes.
+
+Red charges now detonate on any positive damage, regardless of their remaining health. A dashed target preview shows the actual 32-world-unit (two-cell) radius; a brighter shockwave reaches that radius quickly and fades over 0.65 seconds. Falloff damage breaks nearby shallow rock, chips harder deposits and triggers other charges. New planets use fewer charges (1.5%); legacy rare-bearing volatile cells remain resistant minerals rather than concealed explosives. Chain processing is iterative, with at most 64 visual rings and exact-once rewards.
+
+Validation:
+
+- `python3 tools/dev.py test-rendered`: **329 checks, zero failures**; build has zero warnings/errors. Log: `builds/qa/resource-cells-regression.log`. Added impact ignition, radius/falloff, invalid-damage rejection, a 1,024-charge chain, exact-once rare pickup persistence, single planet-clear notification, removed-style save fallback, paused animation and dense-field particle-budget checks. The lower total reflects removal of the obsolete style comparisons.
+- `python3 tools/rendered_check.py`: **98 rendered input checks passed**. Log: `builds/qa/resource-cells-live.log`. Real held input detonates two high-health charges, destroys adjacent rock/mineral cells, preserves a distant block, and collects exactly 16 CR and two Titanium units after fragment travel. Existing injected touch/drag, scaled engine mouse, workshop, drone service and manual-to-auto handoff checks pass. Final visual-only shockwave timing was rebuilt and exercised in this walkthrough.
+- Inspected `resource-cells-default-frame-1.png`, `technical-deposits-classic.png`, `world-design-picker.png`, `impact-charge-before.png` and `impact-charge-detonation.png` under `builds/qa/`. Both designs show full color cells with a shared small reactor effect. The picker contains only two designs. The charge preview surrounds the actual affected area; the impact frame shows overlapping expanding rings and cleared cells.
+- Python syntax and `git diff --check` pass. Test saves remain isolated; no player save was accessed. These are rendered desktop checks, including phone-sized windows, not physical Android testing. No APK/AAB or native package was built. The earlier pacing measurements below predate the expanded charge damage; campaign balance and physical-device performance remain unmeasured for this change.
+
+---
+
+# Historical: faster opening, later investment and active manual mining
+
+The starting 80 CR now buys Power (25 CR) and Fire Rate (20 CR), leaving 35 CR before mining income. The first three purchases are discounted: Power 25/55/110, Rate 20/45/95 and chassis 60/140/300 for type 0, scaled by type. Initial Power/Rate increments are 20% damage / 10% cadence each; after level three they fall to 4% / 2%. Later prices use a rising 1.4 exponential factor and level power term, independent of wall-clock time. The per-item Power cadence contribution remains. `resources/progression.tres` centralizes costs and ship expansion prices. Invalid authored prices reject transactions atomically.
+
+First cannon is 100 CR + 2 Titanium, Scout 180 CR + 2 Titanium, and Titanium market price is 80 CR. Deeper materials/advanced chassis remain substantial investments. Newly generated ordinary ore starts at 3.2 HP plus 0.25 per depth cell, with 2/8/4 CR base stone/gold/other values. Rare resistance, depth gates, growing planets and the accelerating sector health curve remain. Research uses sector OR existing saved lifetime-mined thresholds 0/250/2,000/8,000, so a giant first planet does not block all equipment expansion. Open recipes refresh when research unlocks and do not re-ignite the workshop. Existing tiles/health/pickups and save version are preserved.
+
+Held manual ship mining now provides 1.5× hit damage and 1.6× cadence (2.4× nominal output) on primary and auxiliary mounts. The benefit is real firing/damage rather than multiplied pickup credit. The same-equipment 60-second corridor check uses actual injected held touch and records **86 blocks / 172 CR manual versus 40 blocks / 80 CR automatic**. Independent drone damage/cadence is unchanged by the ship mode. Automatic-mode call-to-action text and manual mining telemetry show the benefit.
+
+The stronger mining exposed a drone routing issue: a direct approach could repeatedly re-enter a jagged lip immediately after backing away. Drones now commit to a short outside transfer, climbing to clearance before retrying the approach. Recall/docking, single mounts, saved orders, weapon behavior and mode-independent output remain intact. The rendered regression measures an excursion over 1,800 units, mining, clear hull and an idle mothership. Live checks sample the complete excursion rather than requiring a particular separation at exactly the last frame.
+
+Measured pacing (production C# simulation, fixed guided automatic purchase plan, ordinary resource purchases, no gifted resources/forced clears):
+
+| Milestone | Before | Final tuning |
+| --- | --- | --- |
+| First Power | 5:40 | Affordable at start |
+| First Rate | 0:55 | Affordable at start |
+| Cannon | 40:05 | 2:20 |
+| Armed Scout | Not reached in 60 minutes | 4:45 |
+| Second fitted ship weapon | Not reached | 11:45 |
+| Nova wave | Not reached | 22:40 |
+| Third hardpoint | Not reached | 38:55 |
+| Sector 2 | Not reached | 56:35 |
+
+At 60 simulated minutes the final plan has three ship weapons, one drone, sector 2 and about 447 CR/min over the last five minutes, compared with one fitted weapon, no drones, sector 1 and 39 CR/min previously. The final plan was run through 180 minutes and reached sector 3. It buys the first five Power levels per fitted item, not an optimal/unbounded upgrade strategy. These are controlled purchase-path measurements, not promises for every player. Full human campaign/phone balancing remains open.
+
+Validation:
+
+- `python3 tools/dev.py balance --label before --minutes 60` recorded the old curve; `python3 tools/dev.py balance --label tuned-three-hours --minutes 180` records the final first hour and extended run. Output: ignored `builds/qa/balance-before.json`, `balance-tuned-three-hours.json`, and corresponding logs. The opt-in `tests/balance.tscn` requires isolated `--test` state and never invokes player persistence. The original sandboxed baseline had the macOS headless display notice but completed successfully; final extended profile completed without runtime errors.
+- `python3 tools/dev.py test-rendered`: **357 checks, zero failures**, compiler zero warnings/errors. `builds/qa/onboarding-rendered-regression.log`. New coverage checks immediate purchases, front-loaded/diminishing increments, accelerating prices, invalid authored-cost rejection, affordable recipes/rare material differentiation, mining research and save persistence, live recipe unlock without ignition replay, rising resistance/income ratio, held-input manual credits/blocks/damage, mode-independent drone output and the tuned cannon drone's jagged-lip transfer. All previous touch/mouse, workshop, crafting, saves, styles, manual handoff and minimap checks remain passing.
+- `python3 tools/rendered_check.py`: **124 rendered input checks passed**, `builds/qa/onboarding-live.log`. Added actual starting-wallet purchases, visible upgrade feedback and updated real transaction prices. The legacy unlocked input fixture explicitly restores its original 80-CR wallet after the separate fresh-game purchase check. Drone excursion reaches about 1,851 units with continued mining; recall/service/redeployment still pass. Runtime logs have no errors or warnings.
+- Inspected `onboarding-starter-upgrades.png`, `manual-clearing-path.png` and the existing phone-sized workshop walkthrough. Power +20% / Rate +10%, remaining wallet, next costs, fitted hull and manual 2.4× output guidance are visible and contained. Desktop rendering and injected touch at 390×844/540×960 are not physical Android testing.
+- Python syntax and `git diff --check` pass. No player save was read/written; no APK/AAB or native package was built.
+
+`PROGRESSION.md` records recipes, milestone rules, cost formulas, measurement methodology and pacing limitations. `tools/dev.py balance --label current --minutes 60` reproduces an isolated profile for further tuning.
+
+---
+
+# Historical: local reactive pilot, survey minimap and growing planets
+
+The mothership's automatic flight no longer uses the planet center, global nearest-ore selection or a prescribed orbit. It scans a forward first-hit cone, holds a visible target, approaches/brakes to an 88-unit mining distance, aligns before firing, separates from nearby hull hazards, and uses two-unit swept movement with local slide/backoff. Slight inherited corner overlaps use continuous penetration-reducing recovery. If forward contact is lost it turns to look around, then surveys expanding legs using odometry. Small changing lateral corrections keep mining locally rather than circling. Only visible fronts can be selected/fired upon; hidden ore and the minimap do not supply destinations. Drone outside-transfer routing remains separate. Authored rules are in `resources/autopilot_flight.tres`.
+
+Starting planet radius is 54 cells, twice the previous diameter and approximately four times the block area (over 9,000 blocks). Radius increases through `54 + 6 × log2(sector)`, with generation extents derived from the authored radius and v1 validation supporting expanded coordinates. Sectors 1/2/4/16 have radii 54/60/66/78 cells. Existing saved terrain and health remain exact; the enlarged geology applies on generation. Damage regions gather only nearby cells and rendering looks up visible cells, avoiding whole-planet scans per blast or wave tick.
+
+Both flight modes include a read-only Survey minimap with remaining terrain, ship/heading, deployed/returning drone markers and camera footprint. A distant ship remains marked at the edge. The terrain texture is cached and refreshed at most five Hz when terrain changes; camera-only redraws do not invalidate its revision. Markers stay fluid. Map touches cannot start steering. The map joins the staggered HUD ignition while workshop tabs retain the earlier no-replay fix.
+
+Validation:
+
+- `python3 tools/dev.py test-rendered`: **341 checks, zero failures**, compiler zero warnings/errors. `builds/qa/local-pilot-rendered-regression.log`. Includes first-hit occlusion, no influence from hidden rear ore, intentional look-around to reacquire rearward ore, approach/range-gated firing, local mining hover, bays/ledges/L-shaped cuts at 15/30/60 fps, corner-overlap recovery, actual held manual excavation followed by safe auto handoff, speed bounds, old sparse-remnant cases, expanded grid generation/growth and v1 round-trip, minimap bounds/input isolation/cache invalidation/edge markers, and all prior crafting/rate/upgrades/touch/legacy regressions. Intentional malformed-save warnings are expected.
+- A prior headless run passed **337 checks** before adding the final handoff and look-around checks. `builds/qa/local-pilot-regression.log`. Its existing shutdown ObjectDB leak notice is not a physical-device performance result.
+- `python3 tools/rendered_check.py`: **122 rendered input checks passed**. `builds/qa/local-pilot-live.log`. Uses injected Viewport touches/drags and the scaled engine desktop mouse path. The added live fixture performs manual mining in a carved bay, switches through the actual mode button without changing terrain/position, then simulates twenty seconds of local autopilot with **zero hull-overlap frames** and continued mining/movement. It also generates sectors 1/2/4 and confirms larger real grids plus the visible minimap. Sparse search timing allows the deliberate look-around before approach/aim/fire. Runtime logs have no errors or warnings.
+- Inspected `local-pilot-manual-excavation.png`, `local-pilot-after-handoff.png`, `minimap-growing-sector-1.png`, `minimap-growing-sector-4.png`, and `manual-phone-size.png`. The map fits above heading telemetry, the ship stays visible and the camera follows the excavated bay. QA screenshots now wait for deferred CanvasItem redraw commands before forcing an occluded desktop frame, avoiding stale ship positions after generating a fixture.
+- `git diff --check` and Python syntax validation pass. Test saves stay in `.godot/tests`; no player save is read or written. These are rendered desktop checks, including 390×844 phone-sized windows, not physical Android testing. No APK/AAB or native package was built.
+
+This establishes the tested local steering/recovery behavior and actual geometry growth. It is not exhaustive proof for every possible concavity or a full campaign/mobile performance playtest. Larger planets increase excavation time and rare-layer travel distance; `PROGRESSION.md` records the revised geometry and existing balance limitations.
+
+---
+
+# Historical: workshop ignition frequency and separate fire-rate tuning
+
+Workshop ignition is now an explicit entry event. Opening Ship Systems (or the paused workshop) plays it once; switching/reselecting Ship/Craft/Fleet/Market tabs, changing categories/pages, purchasing, or resizing an open workshop leaves it settled. Clicking the selected tab is a no-op that preserves its existing channel rather than restarting its animation. Closing and reopening begins a new workshop visit. Other startup/mode-change neon behavior remains as authored.
+
+Fleet → Weapons now offers separate **Power** and **Fire Rate** controls with displayed credit costs and levels. Fire-rate tuning adds a `1 + 0.04 × rate level` multiplier, independently rank-capped, with cost `floor((120 + type × 140) × (rate level + 1)^1.9)` CR. It reduces the actual primary, auxiliary and drone-mounted weapon cooldowns. Purchases remain atomic; drone-mounted tuning requires docking. Optional saved `rate_level` defaults to zero for older equipment saves and is validated before applying a save. Existing Power levels/bonuses remain intact.
+
+Weapon pages now contain two items with separate fit/primary and Power/Fire Rate rows; all inventory pages remain accessible. The fitted ship stays visible, and its callouts show Power/Rate levels.
+
+Validation:
+
+- `python3 tools/dev.py test-rendered`: **315 checks, zero failures**, build zero warnings/errors. `builds/qa/workshop-rate-rendered-regression.log`. New checks inject real touchscreen events for first-entry ignition, selected-tab identity/age preservation, all workshop tabs staying settled, phone-sized resizing without replay, a rate purchase with duplicate mouse emulation charging once, independent levels, actual shorter primary/auxiliary/drone cooldowns, insufficient-funds/rank/service rejection, rate persistence, malformed-rate save rejection and older saves without the new field. Existing navigation, touch ownership, rendering, crafting, progression and legacy-save regressions pass.
+- `python3 tools/rendered_check.py`: **115 rendered input checks passed**. `builds/qa/workshop-rate-live.log`. Added live checks cover entry/reselection/tab behavior and independent fire-rate purchasing. The full route continues through phone-sized desktop inputs, all world styles, crafting, mount fitting, drone mining/recall/service and Nova effects. Runtime logs contain no errors or warnings.
+- Inspected `builds/qa/crafting-weapon-upgrades.png` at a 390×844 desktop window: separate Power and Fire Rate controls, level/cost feedback, ship schematic and transaction text remain contained. Inspected `drydock-ship-mounts.png` to verify the second weapon page and fitted hull remain usable.
+- `git diff --check` and Python syntax validation pass. Test saves remain isolated in `.godot/tests`; no player save is read or written. Rendering inspection and input injection are desktop verification, not physical Android testing. No APK/AAB or other native package was built.
+
+---
+
+# Historical: technical designs, neon ignition, ship mounts and independent drones
 
 Current revision addresses the visual/progression follow-up. Clean Frontier is retained; the original flat-square design was not deleted and is now explicitly titled **Original**, placed beside Clean Frontier on the first picker page. Eight additional restrained treatments are registered: Contour, Lithograph, Carbon, Faultline, Monolith, Spectral, Circuit and Radar. The seven earlier decorative presets remain in later pages for saved-ID compatibility. All 17 choices are paged and preserve terrain, partial health, wallet, pending rewards and ship state.
 

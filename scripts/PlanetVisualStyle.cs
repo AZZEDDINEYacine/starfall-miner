@@ -6,7 +6,7 @@ namespace StarfallMiner;
 [GlobalClass]
 public partial class PlanetVisualStyle : Resource
 {
-    public enum Surface { FlatGrid, NeonFrontier, Fractured, Prism, Survey, Solar, Abyssal, Relic, Chromatic, Contour, Lithography, Carbon, Faultline, Monolith, Spectral, Circuit, Radar }
+    public enum Surface { FlatGrid, NeonFrontier }
     [Export] public string Id { get; set; } = "classic";
     [Export] public string Title { get; set; } = "CLASSIC GRID";
     [Export] public string Description { get; set; } = "Original flat pixels";

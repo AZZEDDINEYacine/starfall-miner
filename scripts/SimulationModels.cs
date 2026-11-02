@@ -36,11 +36,17 @@ public struct Beam
     public float Life, MaxLife;
 }
 
+public struct ContinuousBeam
+{
+    public bool Active, Hit;
+    public Vector2 Origin, End;
+}
+
 public struct Ring
 {
     public Vector2 Position;
     public Color Color;
-    public float Start, Finish, Life, MaxLife;
+    public float Start, Finish, Life, MaxLife, Strength;
 }
 
 public struct Shell

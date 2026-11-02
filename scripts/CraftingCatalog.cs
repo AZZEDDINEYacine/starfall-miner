@@ -8,9 +8,11 @@ public partial class CraftingCatalog : Resource
 {
     [Export] public Godot.Collections.Array<EquipmentBlueprint> Recipes { get; set; } = [];
     [Export] public string[] MaterialNames { get; set; } = ["Titanium", "Iridium", "Aether core"];
-    [Export] public Color[] MaterialColors { get; set; } = [new("c2e3eb"), new("df9cff"), new("ffe0a0")];
-    [Export] public int[] MarketPrices { get; set; } = [480, 1800, 6400];
+    [Export] public Color[] MaterialColors { get; set; } = [new("a6b8c7"), new("b37aef"), new("ffa847")];
+    [Export] public int[] MarketPrices { get; set; } = [80, 1200, 4200];
     [Export] public int[] RankSectors { get; set; } = [1, 2, 4, 7];
+
+    [Export] public long[] RankMiningMilestones { get; set; } = [0, 150, 1200, 5000];
 
     public EquipmentBlueprint Weapon(int type)
     {

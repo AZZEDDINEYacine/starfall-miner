@@ -63,8 +63,9 @@ public partial class VisualPalette : Resource
     {
         1 => WeaponNova,
         2 => WeaponIon,
-        3 => new Color("e7ba80"),
+        3 => new Color("65bfff"),
         4 => new Color("b7d9f2"),
+        5 => new Color("7eeeff"),
         _ => WeaponLance
     };
 

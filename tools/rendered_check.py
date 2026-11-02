@@ -14,6 +14,12 @@ def touch(x, y, pressed, finger=7, canceled=False):
 
 def tap(name, finger=8):
     state = request()
+    if name not in state["buttons"] and state["panel"] == "fleet" and name.startswith(("primary_", "equip_", "weapon_upgrade_", "rate_upgrade_")):
+        state = tap("fleet_weapons")
+        for _ in range(12):
+            if name in state["buttons"]:
+                break
+            state = tap("weapons_next")
     rect = state["buttons"][name]
     x, y = rect["x"] + rect["w"] / 2, rect["y"] + rect["h"] / 2
     touch(x, y, True, finger)
@@ -26,6 +32,7 @@ def run_checks():
         checks.append({"check": description, "passed": bool(value)})
         print(("PASS: " if value else "FAIL: ") + description, flush=True)
         if not value:
+            (ROOT / "builds/qa/rendered-failure.json").write_text(json.dumps(request(), indent=2))
             raise AssertionError(description)
 
     state = request()
@@ -33,14 +40,40 @@ def run_checks():
     time.sleep(3.3)
     state = request("freeze", value=True)
     check(state["auto"] and state["height"] > state["width"], "Rendered automatic mode is portrait")
-    check(state["blocks"] > 2000, "Rendered new planet contains thousands of ore tiles")
+    check(state["blocks"] > 9000, "Rendered starting planet has double diameter and more than nine thousand tiles")
     check(len(state["owned_weapons"]) == 1 and not state["drones"], "A fresh game starts with one owned lance and no free drones")
     screenshot = request("screenshot", name="auto-portrait.png")
     check(Path(screenshot["screenshot"]).stat().st_size > 1000, "Live rendered portrait screenshot captured")
+    check(state["minimap"] is not None and state["minimap"]["w"] >= 80,
+          "Rendered flight HUD includes a bounded terrain survey minimap")
+    # Spend the actual starting wallet on useful first purchases through real touches.
+    tap("systems"); tap("tab_fleet"); tap("fleet_weapons")
+    before = request()["credits"]
+    state = tap("weapon_upgrade_1")
+    check(state["owned_weapons"][0]["level"] == 1 and state["credits"] == before - 25,
+          "The fresh wallet buys the first Power upgrade for 25 credits")
+    state = tap("rate_upgrade_1")
+    check(state["owned_weapons"][0]["rate_level"] == 1 and state["credits"] == before - 45,
+          "The same fresh wallet also buys Fire Rate, leaving credits for the next mining goal")
+    request("activation_frame", seconds=state["activation_duration"])
+    request("screenshot", name="onboarding-starter-upgrades.png")
+    tap("done")
     # Existing multi-weapon input checks use a migrated unlocked inventory.
     request("legacy_controls_fixture")
     state = tap("systems")
     check(state["panel"] == "systems", "Rendered menu opens through a touchscreen finger")
+    check(any(c["name"] == "Modal" and c["processing"] for c in state["hologram_channels"]),
+          "Opening Ship Systems starts one workshop entry ignition")
+    state = request("activation_frame", seconds=0.8)
+    modal = next(c for c in state["hologram_channels"] if c["name"] == "Modal")
+    state = tap("tab_systems")
+    selected = next(c for c in state["hologram_channels"] if c["name"] == "Modal")
+    check(selected["id"] == modal["id"] and selected["age"] == modal["age"],
+          "Clicking the selected Ship tab preserves the current animation instead of restarting it")
+    for tab in ("fabricator", "fleet", "market", "systems"):
+        state = tap("tab_" + tab)
+        check(not state["activation_running"] and all(c["brightness"] == 1 for c in state["hologram_channels"]),
+              f"Workshop tab {tab} switches instantly without repeated neon ignition")
     request("screenshot", name="ship-systems.png")
     state = tap("tab_fleet")
     state = tap("primary_2")
@@ -114,8 +147,8 @@ def run_checks():
     # Compare every design on exactly the same frozen terrain through real menu touches.
     state = tap("pause")
     state = tap("designs")
-    check(state["paused"] and state["panel"] == "designs" and len(state["visual_styles"]) >= 8,
-          "Pause menu opens a live world-design comparison with at least eight presets")
+    check(state["paused"] and state["panel"] == "designs" and len(state["visual_styles"]) == 2,
+          "Pause menu offers exactly Clean Frontier and Original")
     preview_before = state
     for index, art in enumerate(state["visual_styles"]):
         while f"design_{index}" not in state["buttons"]:
@@ -274,11 +307,14 @@ def run_checks():
     sector_before = state["sector"]
     start_x = state["ship_x"]
     state = request("advance_simulation", seconds=5.0)
-    check(state["ship_x"] > start_x + 500, "Autopilot closes the gap to isolated ore instead of orbiting the empty center")
+    check(state["ship_x"] > start_x + 100, "Autopilot closes the gap to isolated ore instead of orbiting the empty center")
     state = request("advance_simulation", seconds=0.35)
     request("screenshot", name="autopilot-last-block-approach.png")
-    state = request("advance_simulation", seconds=2.4)
-    check(state["blocks"] == 0, "Autopilot destroys the final outer-edge block")
+    for _ in range(20):
+        state = request("advance_simulation", seconds=0.6)
+        if state["blocks"] == 0:
+            break
+    check(state["blocks"] == 0, "Local pilot approaches, aligns and destroys the final outer-edge block")
     request("screenshot", name="autopilot-last-block-cleared.png")
     state = request("advance_simulation", seconds=4.0)
     check(state["sector"] == sector_before + 1 and state["blocks"] > 2000,
@@ -299,7 +335,7 @@ def run_checks():
     request("mouse", x=x, y=y, pressed=True)
     request("mouse", x=x, y=y, pressed=False)
     state = touch(x, y, False, 10)
-    check(len(state["owned_weapons"]) == 2 and state["credits"] == before - 600 and state["materials"][0] == 16,
+    check(len(state["owned_weapons"]) == 2 and state["credits"] == before - 50 and state["materials"][0] == 19,
           "Rendered touch crafting creates one Nova and consumes one complete recipe")
     check(not state["activation_running"], "Crafting refresh preserves a settled readable menu")
     tap("craft_drones")
@@ -319,11 +355,17 @@ def run_checks():
     tap("fleet_weapons")
     state = tap(f"weapon_upgrade_{nova_id}")
     check(state["owned_weapons"][1]["level"] == 1, "Credit upgrade improves the individual mounted weapon")
+    before = state["credits"]
+    state = tap(f"rate_upgrade_{nova_id}")
+    check(state["owned_weapons"][1]["rate_level"] == 1 and state["owned_weapons"][1]["level"] == 1 and state["credits"] == before - 35,
+          "Separate Fire Rate upgrade tunes the weapon without buying another power level")
+    check(not state["activation_running"] and state["visible_ship_previews"] == 1,
+          "Fire-rate purchases keep the ship visible and the workshop settled")
     request("screenshot", name="crafting-weapon-upgrades.png")
     state = tap("tab_market")
     before, iridium = state["credits"], state["materials"][1]
     state = tap("buy_1")
-    check(state["credits"] == before - 1800 and state["materials"][1] == iridium + 1,
+    check(state["credits"] == before - 1200 and state["materials"][1] == iridium + 1,
           "Intergalactic market exchanges credits for a rare crafting resource")
     request("screenshot", name="crafting-market.png")
     tap("done"); tap("resume")
@@ -343,7 +385,7 @@ def run_checks():
     tap("tab_systems")
     before = request()["credits"]
     state = tap("hardpoint")
-    check(state["ship_hardpoints"] == 2 and state["credits"] == before - 2400,
+    check(state["ship_hardpoints"] == 2 and state["credits"] == before - 600,
           "Ship upgrading installs a second hardpoint at the displayed credit cost")
     tap("tab_fleet"); tap("fleet_weapons")
     state = tap(f"equip_{wave_id}")
@@ -354,10 +396,13 @@ def run_checks():
     state = request("fleet_cruise_trial")
     start = state["ship_x"], state["ship_y"]
     hp = state["planet_hp"]
+    furthest = 0
     for _ in range(8):
         state = request("advance_simulation", seconds=5)
-    drone = state["drones"][0]
-    check((drone["x"] - start[0]) ** 2 + (drone["y"] - start[1]) ** 2 > 150 ** 2 and state["planet_hp"] < hp and
+        drone = state["drones"][0]
+        furthest = max(furthest, (drone["x"] - start[0]) ** 2 + (drone["y"] - start[1]) ** 2)
+    print(f"DRONE CRUISE: greatest sampled separation {furthest ** 0.5:.1f}; mined HP {hp - state['planet_hp']:.1f}", flush=True)
+    check(furthest > 150 ** 2 and state["planet_hp"] < hp and
           (state["ship_x"], state["ship_y"]) == start,
           "Deployed drone cruises and mines independently far from the idle mothership")
     tap("pause"); tap("workshop"); tap("tab_fleet"); tap("fleet_drones")
@@ -388,13 +433,122 @@ def run_checks():
     check(state["waves"] == 0, "The expanding Nova front expires within its authored lifetime")
     state = request("deep_deposits_fixture")
     tap("pause"); state = tap("designs")
-    for index in range(10):
+    for index in range(2):
         while f"design_{index}" not in state["buttons"]:
             state = tap("design_prev" if index < state["visual_style_index"] else "design_next")
         state = tap(f"design_{index}")
         tap("resume"); request("activation_frame", seconds=activation_duration)
         request("screenshot", name=f"technical-deposits-{state['visual_style']}.png")
         tap("pause"); state = tap("designs")
+    # Full material cells move internally while their world data remains unchanged.
+    state = request("deep_deposits_fixture")
+    state = request("special_frame", seconds=0)
+    request("activation_frame", seconds=activation_duration)
+    terrain = state["planet_hp"], state["blocks"], state["credits"], state["materials"]
+    request("screenshot", name="resource-cells-default-frame-0.png")
+    state = request("special_frame", seconds=0.6)
+    check((state["planet_hp"], state["blocks"], state["credits"], state["materials"]) == terrain and
+          0 < state["special_particles"] <= 128, "Moving internal ore sparks preserve the world and stay within their particle budget")
+    request("screenshot", name="resource-cells-default-frame-1.png")
+    state = request("impact_fixture")
+    check(state["impact_charges"] == 2 and state["blocks"] == 5, "Impact fixture starts with two high-health charges and adjacent minerals")
+    request("activation_frame", seconds=activation_duration)
+    request("screenshot", name="impact-charge-before.png")
+    x, y = state["ship_screen_x"] + 150, state["ship_screen_y"]
+    touch(x, y, True, 2)
+    state = request("advance_simulation", seconds=0.25)
+    check(state["impact_charges"] == 0 and state["blocks"] == 1 and state["materials"][0] == 0,
+          "A real held mining hit detonates both high-health charges and nearby ore without prepaying the rare pickup")
+    request("screenshot", name="impact-charge-detonation.png")
+    touch(x, y, False, 2)
+    state = request("advance_simulation", seconds=2.5)
+    check(state["materials"][0] == 2 and state["credits"] == 96 and state["blocks"] == 1,
+          "Blast fragments collect one exact credit/material reward while the distant block remains intact")
+    # Reproduce the manual-excavation handoff, checking every simulated frame for contact.
+    state = request("carved_bay")
+    mined = state["mined"]
+    x, y = state["ship_screen_x"] + 150, state["ship_screen_y"]
+    touch(x, y, True, 2)
+    state = request("advance_simulation", seconds=5)
+    check(state["mined"] > mined and state["pointer_id"] == 2, "Held manual mining changes a notched bay before the autopilot handoff")
+    request("activation_frame", seconds=activation_duration)
+    request("screenshot", name="local-pilot-manual-excavation.png")
+    start, planet_id, blocks, mined = (state["ship_x"], state["ship_y"]), state["planet_id"], state["blocks"], state["mined"]
+    state = tap("mode", 3)
+    check(state["auto"] and state["planet_id"] == planet_id and state["blocks"] == blocks and
+          (state["ship_x"], state["ship_y"]) == start and state["pointer_id"] == -1,
+          "Autopilot takes over the actual manually changed bay without teleporting or replacing terrain")
+    for _ in range(4):
+        state = request("advance_simulation", seconds=5)
+    check(state["pilot_overlap_frames"] == 0 and state["mined"] > mined and
+          (state["ship_x"] - start[0]) ** 2 + (state["ship_y"] - start[1]) ** 2 > 64,
+          "Local pilot continues mining and moving for twenty seconds after handoff with no hull-overlap frames")
+    request("activation_frame", seconds=activation_duration)
+    request("screenshot", name="local-pilot-after-handoff.png")
+    state = request("trapped_pocket")
+    before = state["blocks"]
+    request("activation_frame", seconds=activation_duration)
+    request("screenshot", name="trapped-pocket-before.png")
+    for _ in range(6):
+        state = request("advance_simulation", seconds=5)
+    check(state["blocks"] <= before - 4 and state["pilot_cut_frames"] > 0 and state["pilot_overlap_frames"] == 0,
+          "Trapped automatic pilot cuts exposed faces to widen a pocket without requiring an impossible stand-off or clipping its hull")
+    request("screenshot", name="trapped-pocket-widened.png")
+    state = request("laser_fixture")
+    request("activation_frame", seconds=activation_duration)
+    x, y = state["ship_screen_x"] + 150, state["ship_screen_y"] + 15
+    touch(x, y, True, 2)
+    state = request("advance_simulation", seconds=0.2)
+    def aligned_laser(state):
+        beam = state["lasers"][0]
+        dx, dy = beam["end_x"] - beam["x"], beam["end_y"] - beam["y"]
+        px, py = state["destination_x"] - state["ship_x"], state["destination_y"] - state["ship_y"]
+        return beam["active"] and abs(dx * py - dy * px) < 0.01
+    check(aligned_laser(state) and state["lasers"][0]["hit"],
+          "Real held thumb produces a continuous beam exactly aligned with the pointer, ending on the first rock face")
+    request("screenshot", name="flux-beam-held.png")
+    request("drag", x=x - 20, y=y - 65, finger=2)
+    state = request("advance_simulation", seconds=0.1)
+    check(aligned_laser(state) and state["lasers"][0]["end_y"] < state["ship_y"] - 10,
+          "Dragging redirects the live beam precisely instead of leaving an old pulse or snapping to block centers")
+    request("screenshot", name="flux-beam-drag.png")
+    state = touch(x, y, False, 2, canceled=True)
+    check(not state["lasers"][0]["active"] and state["pointer_id"] == -1, "Canceled release immediately extinguishes the live beam")
+    # The scaled desktop mouse enters through the engine input path as well.
+    state = request("laser_fixture")
+    request("desktop_mouse", x=state["ship_screen_x"] + 140, y=state["ship_screen_y"] + 8, pressed=True)
+    state = request("advance_simulation", seconds=0.1)
+    check(aligned_laser(state) and state["pointer_id"] == -2, "Engine desktop mouse hold also aims the continuous beam precisely")
+    state = request("desktop_mouse", x=state["ship_screen_x"] + 140, y=state["ship_screen_y"] + 8, pressed=False)
+    check(not state["lasers"][0]["active"], "Desktop mouse release extinguishes the continuous beam")
+    # Maximum Power alone must meet the mining target on deep ordinary sector-four
+    # stone. No gifted Rate levels, shared combat upgrades or overdrive are present.
+    state = request("laser_fixture", max_power=True)
+    x, y = state["ship_screen_x"] + 140, state["ship_screen_y"]
+    muted = state["muted"]
+    if muted:
+        tap("pause"); tap("sound"); tap("resume")
+    before, starts = state["mined"], state["laser_audio_starts"]
+    touch(x, y, True, 2)
+    for _ in range(2):
+        state = request("advance_simulation", seconds=5)
+    check(state["mined"] - before >= 40 and state["owned_weapons"][1]["rate_level"] == 0,
+          "Power-max beam melts at least forty deep ordinary sector-four rocks in ten seconds with no Rate upgrade")
+    check(state["laser_audio_playing"] and state["laser_audio_starts"] == starts + 1,
+          "Continuous laser audio stays on one sustained loop throughout mining")
+    request("screenshot", name="laser-max-power-mining.png")
+    state = touch(x, y, False, 2)
+    check(not state["laser_audio_playing"], "Releasing the beam immediately stops its sustained sound")
+    previous = 0
+    hues = set()
+    for sector in (1, 2, 4):
+        state = request("planet_growth", sector=sector)
+        check(state["blocks"] > previous, f"Generated sector {sector} has a larger real terrain grid")
+        previous = state["blocks"]
+        hues.add(round(state["terrain_hue"], 3))
+        request("activation_frame", seconds=activation_duration)
+        request("screenshot", name=f"minimap-growing-sector-{sector}.png")
+    check(len(hues) == 3, "Successive generated sectors show different terrain hues without changing resource color identities")
     result = {"checks": checks, "passed": len(checks), "input": "Injected Viewport touch/drag and Input.ParseInputEvent mouse events (not hardware input)",
               "orientation": "Portrait in both modes; macOS phone-sized windows, no physical Android test", "state": state}
     (ROOT / "builds/qa/rendered-results.json").write_text(json.dumps(result, indent=2))

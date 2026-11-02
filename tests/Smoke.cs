@@ -47,6 +47,12 @@ public partial class Smoke : Node
 
     private async Task Tap(string id, int finger = 8)
     {
+        if (!_game.Hud.Buttons.ContainsKey(id) && _game.Hud.PanelKind == "fleet" &&
+            (id.StartsWith("primary_") || id.StartsWith("equip_") || id.StartsWith("weapon_upgrade_") || id.StartsWith("rate_upgrade_")))
+        {
+            await Tap("fleet_weapons");
+            for (int page = 0; page < EquipmentState.WeaponCapacity / 2 && !_game.Hud.Buttons.ContainsKey(id); page++) await Tap("weapons_next");
+        }
         var p = _game.Hud.Buttons[id].GetGlobalRect().GetCenter();
         Touch(p, true, finger); Touch(p, false, finger);
         await Frame(); await Frame();
@@ -108,21 +114,22 @@ public partial class Smoke : Node
         double initialValue = generator.Generate(1, _game.Planet.GenerationSettings, generated);
         Check(SameTiles(generated, _game.Planet.Blocks) && Near(initialValue, _game.Planet.InitialValue),
               "Procedural generator produces data independently of scene and renderer");
-        Check(_game.Planet.Blocks.Count > 2000, "New planets contain over two thousand destructible tiles");
+        Check(_game.Planet.Blocks.Count > 8500, "Starting planets have double the previous diameter and over 8,500 destructible tiles");
         Check(!_game.Planet.ContainsPoint(_game.ShipPosition - Main.Center, 9), "The ship spawns outside the enlarged planet");
-        var farShip = Main.Center + new Vector2(0, -850);
-        var advanced = AutopilotSteering.Advance(farShip, Main.Center, _game.Planet, 0.05f);
+        var farShip = Main.Center + new Vector2(0, -1500);
+        var pilot = new AutopilotSteering { Settings = _game.PilotSettings }; pilot.Reset(Mathf.Pi * 0.5f);
+        var advanced = pilot.Advance(farShip, Main.Center, _game.Planet, 0.05f);
         Check(advanced.DistanceTo(farShip) <= AutopilotSteering.MaxSpeed * 0.05f + 0.001f,
             "Autopilot cannot jump when the desired orbit is far away");
         var buriedShip = Main.Center + new Vector2(0, -100);
-        var escaping = AutopilotSteering.Advance(buriedShip, Main.Center, _game.Planet, 0.05f);
+        var escaping = pilot.Advance(buriedShip, Main.Center, _game.Planet, 0.05f);
         Check(escaping.DistanceTo(buriedShip) <= AutopilotSteering.MaxSpeed * 0.05f + 0.001f,
             "Collision recovery cannot teleport to the computed planetary surface");
         var position = farShip;
         bool speedLimited = true;
         for (int i = 0; i < 120; i++)
         {
-            var next = AutopilotSteering.Advance(position, Main.Center, _game.Planet, 0.05f);
+            var next = pilot.Advance(position, Main.Center, _game.Planet, 0.05f);
             speedLimited &= next.DistanceTo(position) <= AutopilotSteering.MaxSpeed * 0.05f + 0.001f;
             position = next;
         }
@@ -316,9 +323,15 @@ public partial class Smoke : Node
         await TestSaves();
         await TestCrafting();
         await TestFleetEvolution();
+        await TestWorkshopRates();
+        await TestLocalPilot();
+        await TestOnboardingAndManualProductivity();
         await TestModeTransitions();
         await TestHologramActivation();
         await TestVisualDesigns();
+        await TestResourceCells();
+        await TestPocketAndLaser();
+        await TestWeaponOutput();
         await TestHeldSteeringAndCamera();
         Check(Main.Compact(1200000) == "1.2M" && Main.Compact(1e40).Length > 10, "Large currency formats without integer overflow");
         _game.QueueFree(); await Frame();
@@ -358,10 +371,10 @@ public partial class Smoke : Node
         Check(!_game.Craft(1) && _game.Credits == credits && _game.Equipment.Weapons.Count == 1,
             "Insufficient crafting resources leave money and inventory untouched");
         _game.Credits = 20000;
-        Check(_game.TradeMaterial(0, 5, true) && _game.Credits == 17600 && _game.Equipment.Materials[0] == 5, "Market buys a five-unit material batch at the displayed credit price");
-        Check(_game.TradeMaterial(0, 1, false) && _game.Credits == 17768 && _game.Equipment.Materials[0] == 4 && _game.IncomeAccum == 0,
+        Check(_game.TradeMaterial(0, 5, true) && _game.Credits == 19600 && _game.Equipment.Materials[0] == 5, "Market buys a five-unit material batch at the displayed credit price");
+        Check(_game.TradeMaterial(0, 1, false) && _game.Credits == 19628 && _game.Equipment.Materials[0] == 4 && _game.IncomeAccum == 0,
             "Material sales pay less than purchases and cannot inflate offline mining income");
-        Check(_game.Craft(1) && _game.Equipment.Weapons.Count == 2 && _game.Equipment.Materials[0] == 0 && _game.Credits == 17168,
+        Check(_game.Craft(1) && _game.Equipment.Weapons.Count == 2 && _game.Equipment.Materials[0] == 3 && _game.Credits == 19578,
             "Crafting a Nova creates an owned instance and consumes the complete recipe exactly once");
         Check(!_game.Craft(2), "Ion blueprint remains rank-gated even when using the crafting API");
         _game.TradeMaterial(0, 5, true);
@@ -446,7 +459,7 @@ public partial class Smoke : Node
         Touch(craftPoint, true, 10); Mouse(craftPoint, true, true); Mouse(craftPoint, false, true); Touch(craftPoint, false, 10);
         Mouse(craftPoint, true, true); Mouse(craftPoint, false, true);
         await Frame(); await Frame();
-        Check(_game.Equipment.Weapons.Count == 2 && _game.Credits == 9400 && _game.Equipment.Materials[0] == 16,
+        Check(_game.Equipment.Weapons.Count == 2 && _game.Credits == 9950 && _game.Equipment.Materials[0] == 19,
             "Touch crafting plus emulated mouse creates one item and charges one recipe");
         Check(!_game.Hud.ActivationRunning, "Inventory refresh does not replay the three-second ignition on every purchase");
         var statusLabel = _game.Hud.FindChildren("*", "Label", true, false).OfType<Label>().First(l => l.Text == _game.EquipmentMessage);
@@ -460,7 +473,7 @@ public partial class Smoke : Node
         Check(_game.Equipment.Drones[0].WeaponId == _game.Equipment.Weapons[1].Id, "Fleet touchscreen control equips the spare crafted weapon on the new drone");
         await Tap("tab_market"); before = _game.Credits;
         await Tap("buy_1");
-        Check(_game.Equipment.Materials[1] == 1 && _game.Credits == before - 1800, "Intergalactic market touchscreen purchase updates credits and inventory");
+        Check(_game.Equipment.Materials[1] == 1 && _game.Credits == before - 1200, "Intergalactic market touchscreen purchase updates credits and inventory");
         await Tap("done"); await Tap("resume");
         _game.ResetProgress(); await Frame(); await Frame();
     }
@@ -490,6 +503,8 @@ public partial class Smoke : Node
             _game.AimKey = _game.TargetKey = MiningPlanet.NoTarget;
             var first = MiningPlanet.KeyPoint(remnants[scenario][0]);
             _game.ShipPosition = Main.Center - first.Normalized() * 600;
+            _game.ShipAngle = (Main.Center - _game.ShipPosition).Angle();
+            _game.Autopilot.Reset(_game.ShipAngle);
             bool speedLimited = true, hullClear = true;
             for (int i = 0; i < 900 && _game.WarpTimer <= 0; i++)
             {
@@ -563,8 +578,8 @@ public partial class Smoke : Node
         _game.SetAuto(false); await Frame(); await Frame();
         _game.View.PlaceWorld(true);
         var channels = _game.Hud.Channels;
-        Check(channels.Count == 6 && _game.Hud.ActivationDuration >= 2.9f && _game.Hud.ActivationDuration <= 3.1f,
-            "Manual holographic HUD uses six staggered modules with a perceptible three-second activation budget");
+        Check(channels.Count == 7 && _game.Hud.ActivationDuration >= 2.9f && _game.Hud.ActivationDuration <= 3.1f,
+            "Manual holographic HUD uses seven staggered modules including the survey map with a perceptible three-second activation budget");
         var first = channels[0];
         var last = channels[^1];
         float duration = _game.Hud.ActivationDuration;
@@ -621,11 +636,10 @@ public partial class Smoke : Node
         var fragment = new DebrisFragment { Position = Main.Center, Value = 7, Size = 2 };
         _game.Debris.Add(fragment);
         await Tap("pause"); await Tap("designs");
-        Check(_game.VisualStyles.Count >= 17 && _game.VisualStyles.Select(s => s.Treatment).Distinct().Count() == _game.VisualStyles.Count,
-            "Pause comparison retains Original and Clean Frontier, eight new technical treatments and archived designs");
+        Check(_game.VisualStyles.Count == 2 && _game.VisualStyles.Select(s => s.Treatment).Distinct().Count() == _game.VisualStyles.Count,
+            "Pause comparison offers only the retained Clean Frontier and Original designs");
         for (int i = 0; i < _game.VisualStyles.Count; i++)
         {
-            while (!_game.Hud.Buttons.ContainsKey($"design_{i}")) await Tap("design_next");
             await Tap($"design_{i}");
             var art = _game.CurrentVisualStyle;
             _game.Step(0.1f);
@@ -830,7 +844,7 @@ public partial class Smoke : Node
             float autoCooldown = _game.FiringCooldown;
             _game.AutoMode = false;
             Check(Near(autoCooldown / _game.FiringCooldown, Main.ManualFireRateMultiplier),
-                $"Manual weapon {weapon} retains its initial 25-percent firing-cadence advantage");
+                $"Manual weapon {weapon} retains its 60-percent ship firing-cadence advantage");
         }
         _game.Levels[1] = 100;
         _game.OverdriveLeft = 8;
@@ -852,13 +866,13 @@ public partial class Smoke : Node
         int count = _game.Debris.Count;
         double pending = _game.Debris.Sum(f => f.Value);
         long energy = _game.Debris.Sum(f => f.Energy);
-        _game.SetVisualStyle(2, false);
+        _game.SetVisualStyle(1, false);
         Check(_game.Persistence.Save(_game), "Atomic C# save writes successfully");
         _game.SetVisualStyle(0, false);
         _game.Credits = _game.Flux = 0; _game.Debris.Clear();
         _game.Navigation.SetDestination(_game.ShipPosition + Vector2.Left * 100);
         Check(_game.Persistence.Load(_game), "C# save loads successfully");
-        Check(_game.CurrentVisualStyle.Id == "contour", "Save restores the selected visual design independently of terrain data");
+        Check(_game.CurrentVisualStyle.Id == "classic", "Save restores the selected visual design independently of terrain data");
         Check(!_game.Navigation.Active && _game.Controls.PointerId == -1, "Save loading cancels transient navigation and pending touches");
         Check(_game.Credits == 12345 && _game.Flux == 17, "Save restores wallet");
         Check(SameTiles(tiles, _game.Planet.Blocks), "Save restores every remaining block and health value");

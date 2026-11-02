@@ -61,7 +61,7 @@ public partial class WorldView : Node
         bool changed = Stage.Position != position || Stage.Scale != scale;
         Stage.Scale = scale;
         Stage.Position = position;
-        if (changed) Game.Planet?.NotifyTilesChanged();
+        if (changed) Game.Planet?.NotifyTilesChanged(false);
     }
 
     public Vector2 ScreenToWorld(Vector2 point) => (point - Stage.Position) / Mathf.Max(CameraScale, 0.01f);

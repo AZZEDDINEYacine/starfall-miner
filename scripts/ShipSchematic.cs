@@ -7,7 +7,7 @@ public partial class ShipSchematic : Control
 {
     public Main Game { get; set; } = null!;
     public Font Font { get; set; } = null!;
-    private static readonly string[] WeaponNames = ["PHOTON", "CANNON", "ION", "NOVA WAVE", "BORE"];
+    private static readonly string[] WeaponNames = ["PHOTON", "CANNON", "ION", "NOVA WAVE", "BORE", "FLUX BEAM"];
     private static readonly Vector2[] Hull = [new(15, 0), new(-11, -8), new(-6, 0), new(-11, 8), new(15, 0)];
     private static readonly Vector2[] Fill = [new(15, 0), new(-11, -8), new(-6, 0), new(-11, 8)];
     private void Text(string text, Vector2 p, Color color, int size = 9) => DrawString(Font, p, text, HorizontalAlignment.Left, -1, size, color);
@@ -41,7 +41,7 @@ public partial class ShipSchematic : Control
             var ink = item == null ? dim : Game.Palette.Weapon(item.Type);
             string name = item == null ? i > Game.Equipment.HardpointLevel ? "LOCKED" : "EMPTY" : WeaponNames[item.Type];
             Text($"0{i + 1} / {name}", new Vector2(x, y), ink, 9);
-            if (item != null) Text($"LV {item.Level} / {Main.Compact(Main.WeaponPower(item.Level) * 100)}%", new Vector2(x, y + 14), dim, 8);
+            if (item != null) Text($"POWER {item.Level} / RATE {item.RateLevel}", new Vector2(x, y + 14), dim, 8);
             float start = i == 2 ? x - 4 : x + 88;
             float end = i == 2 ? center.X + 32 : center.X - (i == 0 ? 9 : 32);
             DrawLine(new Vector2(start, y - 3), new Vector2(end, y - 3), new Color(ink, 0.3f), 0.8f, true);

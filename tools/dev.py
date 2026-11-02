@@ -55,7 +55,9 @@ def configure_android():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=["build", "import", "test", "test-rendered", "run", "qa", "export-macos", "export-android"])
+    parser.add_argument("action", choices=["build", "import", "test", "test-rendered", "balance", "run", "qa", "export-macos", "export-android"])
+    parser.add_argument("--label", default="current")
+    parser.add_argument("--minutes", type=int, default=60)
     args = parser.parse_args()
     (ROOT / ".godot").mkdir(exist_ok=True)
     if args.action == "build":
@@ -66,6 +68,11 @@ if __name__ == "__main__":
     elif args.action in ("test", "test-rendered"):
         build()
         godot(*(["--headless"] if args.action == "test" else []), "--scene", "res://tests/smoke.tscn", "--", "--test")
+    elif args.action == "balance":
+        if not re.fullmatch(r"[A-Za-z0-9_-]{1,32}", args.label):
+            raise SystemExit("Balance label must contain only letters, numbers, underscores or hyphens.")
+        build()
+        godot("--headless", "--scene", "res://tests/balance.tscn", "--", "--test", f"--balance-label={args.label}", f"--balance-minutes={args.minutes}")
     elif args.action == "qa":
         build()
         godot("--scene", "res://tests/qa.tscn", "--", "--qa")

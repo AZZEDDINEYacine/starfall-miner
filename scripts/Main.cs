@@ -8,12 +8,14 @@ public partial class Main : Node2D
 {
     public static readonly Vector2 Center = new(270, 408);
     public const string SavePath = "user://starfall_save_v1.json";
-    public static readonly string[] Weapons = ["Photon lance", "Nova cannon", "Ion chain", "Nova wave", "Bore laser"];
+    public static readonly string[] Weapons = ["Photon lance", "Nova cannon", "Ion chain", "Nova wave", "Bore laser", "Flux beam"];
+    public const int ContinuousLaser = 5;
     public const float WeaponRange = 245;
-    public const float ManualFireRateMultiplier = 1.25f;
+    public const float ManualFireRateMultiplier = 1.6f;
+    public const double ManualDamageMultiplier = 1.5;
     private static readonly string[] SectorNames = ["THE CINDER BELT", "AZURE DRIFT", "VIOLET REACH", "VERDANT ECHO"];
     private static readonly double[] UpgradeBase = [45, 60, 50], UpgradeGrowth = [1.62, 1.7, 1.67];
-    private static readonly float[] BaseCooldown = [0.5f, 1.65f, 1.4f, 4.8f, 1.15f];
+    private static readonly float[] BaseCooldown = [0.5f, 1.65f, 1.4f, 4.8f, 1.15f, 0.2f];
     private static readonly string[] Suffixes = ["", "K", "M", "B", "T", "Qa", "Qi"];
 
     [Export] public VisualPalette Palette { get; set; } = null!;
@@ -27,6 +29,8 @@ public partial class Main : Node2D
     public ModeStatusOverlay ModeStatus { get; private set; } = null!;
     public WorldView View { get; private set; } = null!;
     public FlightInput Controls { get; private set; } = null!;
+    [Export] public AutopilotSettings PilotSettings { get; set; } = null!;
+    public AutopilotSteering Autopilot { get; } = new();
     public ManualNavigation Navigation { get; } = new();
     public SaveStore Persistence { get; private set; } = null!;
     private Visuals _visuals = null!;
@@ -51,6 +55,7 @@ public partial class Main : Node2D
     public List<Beam> Beams { get; } = new(16);
     public List<Ring> Rings { get; } = new(32);
     public List<NovaWave> Waves { get; } = new(16);
+    public ContinuousBeam[] LaserBeams { get; } = new ContinuousBeam[3 + EquipmentState.DroneCapacity];
     public List<Shell> Projectiles { get; } = new(16);
     public List<DebrisFragment> Debris { get; } = new(362);
     private (string Title, string Subtitle, Color Color, float Duration)? _startupNotice;
@@ -68,6 +73,8 @@ public partial class Main : Node2D
         View.Game = this;
         _visuals.Game = this;
         Controls.Game = this;
+        Autopilot.Settings = PilotSettings;
+        Planet.GetNode<PlanetRenderer>("Renderer").Game = this;
         Hud.Game = this;
     }
 
@@ -99,12 +106,13 @@ public partial class Main : Node2D
 
     public void Step(float delta)
     {
+        ClearLaserBeams(false);
         Clock += delta;
         TransitionLeft = Mathf.Max(0, TransitionLeft - delta);
         UpdateEffects(delta);
         QueueRedraw();
         _visuals.QueueRedraw();
-        if (Paused) { UpdateDrones(delta, true); Hud.RefreshService(); View.PlaceWorld(false, delta); return; }
+        if (Paused) { Sound.SetLaserActive(false); UpdateDrones(delta, true); Hud.RefreshService(); View.PlaceWorld(false, delta); return; }
         OverdriveLeft = Mathf.Max(0, OverdriveLeft - delta);
         OverdriveCooldown = Mathf.Max(0, OverdriveCooldown - delta);
         TapTimer = Mathf.Max(0, TapTimer - delta);
@@ -119,19 +127,11 @@ public partial class Main : Node2D
         else
         {
             MoveShip(delta);
-            TargetKey = AutoMode ? Planet.Nearest(ShipPosition - Center) : Navigation.Obstacle;
-            if (AutoMode && Planet.Blocks.ContainsKey(AimKey))
-            {
-                var aimed = RayTarget(ShipPosition, Center + MiningPlanet.KeyPoint(AimKey));
-                if (Planet.Blocks.ContainsKey(aimed)) TargetKey = aimed;
-            }
-            if (AutoMode && Planet.Blocks.ContainsKey(TargetKey))
-            {
-                var target = Center + MiningPlanet.KeyPoint(TargetKey);
-                ShipAngle = Mathf.LerpAngle(ShipAngle, (target - ShipPosition).Angle(), delta * 12);
-            }
-            else if (!AutoMode && Navigation.Active) ShipAngle = Mathf.LerpAngle(ShipAngle, Navigation.AimDirection.Angle(), delta * 18);
-            if ((AutoMode || !Hud.BlocksWorldInput && Navigation.ClearingPath) && ShotTimer <= 0) Fire();
+            TargetKey = AutoMode ? Autopilot.Target : Navigation.Obstacle;
+            if (AutoMode) ShipAngle = Autopilot.Heading;
+            else if (Navigation.Active) ShipAngle = Mathf.LerpAngle(ShipAngle, Navigation.AimDirection.Angle(), delta * 18);
+            if (Weapon == ContinuousLaser) UpdateShipLaser(0, Equipment.FindWeapon(Equipment.ShipWeaponId)!, ShipPosition, delta);
+            else if ((AutoMode ? Autopilot.CanFire : !Hud.BlocksWorldInput && Navigation.ClearingPath) && ShotTimer <= 0) Fire();
             if (WarpTimer <= 0) { FireAuxiliaries(delta); UpdateDrones(delta); }
             if (_rng.Randf() < delta * 35 && ShipVelocity.Length() > 3)
             {
@@ -139,6 +139,7 @@ public partial class Main : Node2D
                 AddParticle(behind, -Vector2.FromAngle(ShipAngle) * 65 + new Vector2(_rng.RandfRange(-10, 10), _rng.RandfRange(-10, 10)), Palette.EngineExhaust, 0.25f, 2.4f);
             }
         }
+        SyncLaserSound();
         _incomeWindow += delta;
         if (_incomeWindow >= 2)
         {
@@ -157,7 +158,7 @@ public partial class Main : Node2D
         var previous = ShipPosition;
         if (AutoMode)
         {
-            ShipPosition = AutopilotSteering.Advance(ShipPosition, Center, Planet, delta);
+            ShipPosition = Autopilot.Advance(ShipPosition, Center, Planet, delta);
             OrbitAngle = (ShipPosition - Center).Angle();
         }
         else
@@ -174,8 +175,9 @@ public partial class Main : Node2D
         ShipPosition = Center + Vector2.FromAngle(angle) * (Planet.SurfaceRadius(angle) + 53);
         ShipAngle = (Center - ShipPosition).Angle();
         ShipVelocity = Vector2.Zero;
+        Autopilot.Reset(ShipAngle);
         Navigation.Stop();
-        foreach (var drone in Equipment.Drones) { drone.Position = ShipPosition + (ShipPosition - Center).Normalized() * 20; drone.Target = MiningPlanet.NoTarget; }
+        foreach (var drone in Equipment.Drones) { drone.Position = ShipPosition + (ShipPosition - Center).Normalized() * 20; drone.Target = MiningPlanet.NoTarget; drone.TransferLeft = 0; }
     }
 
     public Vector2I RayTarget(Vector2 from, Vector2 toward)
@@ -192,13 +194,15 @@ public partial class Main : Node2D
     }
 
     public double DamageMultiplier => (1 + 0.12 * Math.Sqrt(Levels[0])) * (OverdriveLeft > 0 ? 1.5 : 1);
-    public float WeaponCooldown(int type, int level) => BaseCooldown[type] / (WeaponRate(level) * (1 + 0.04f * Mathf.Sqrt(Levels[1]))) / (OverdriveLeft > 0 ? 1.65f : 1);
-    public float FiringCooldown => WeaponCooldown(Weapon, ShipWeaponLevel) / (AutoMode ? 1 : ManualFireRateMultiplier);
+    public double ShipDamageMultiplier => DamageMultiplier * (AutoMode ? 1 : ManualDamageMultiplier);
+    public float WeaponCooldown(int type, int level, int rateLevel = 0) => BaseCooldown[type] / (WeaponRate(level) * FireRateBonus(rateLevel) * (1 + 0.04f * Mathf.Sqrt(Levels[1]))) / (OverdriveLeft > 0 ? 1.65f : 1);
+    public float FiringCooldown => WeaponCooldown(Weapon, ShipWeaponLevel, ShipRateLevel) / (AutoMode ? 1 : ManualFireRateMultiplier);
 
     public void Fire(bool manualTap = false)
     {
+        if (Weapon == ContinuousLaser) return; // Held, time-integrated beam; never a tap/pulse weapon.
         if (Paused || WarpTimer > 0 || Planet.Blocks.Count == 0 || (manualTap ? TapTimer : ShotTimer) > 0) return;
-        var key = AutoMode ? (Planet.Blocks.ContainsKey(TargetKey) ? TargetKey : Planet.Nearest(ShipPosition - Center)) :
+        var key = AutoMode ? (TargetKey) :
             RayTarget(ShipPosition, ShipPosition + Navigation.AimDirection * WeaponRange);
         bool hit = Planet.Blocks.ContainsKey(key);
         if (!hit || !AutoMode && !Navigation.ClearingPath) return;
@@ -208,12 +212,13 @@ public partial class Main : Node2D
         if (!AutoMode && hit) target = ShipPosition + shotDirection * Mathf.Clamp((target - ShipPosition).Dot(shotDirection), 19, WeaponRange);
         if (manualTap) TapTimer = 0.16f;
         else ShotTimer = FiringCooldown;
-        EmitWeapon(Weapon, ShipPosition, target, key, shotDirection, DamageMultiplier * WeaponPower(ShipWeaponLevel) * (manualTap ? 1.15 : 1));
+        EmitWeapon(Weapon, ShipPosition, target, key, shotDirection, ShipDamageMultiplier * WeaponPower(ShipWeaponLevel) * (manualTap ? 1.15 : 1));
         if (manualTap) AddRing(target, 6, 26, Palette.Weapon(Weapon), 0.22f);
     }
 
     private void EmitWeapon(int weapon, Vector2 origin, Vector2 target, Vector2I key, Vector2 shotDirection, double multiplier)
     {
+        double damage = Progression.WeaponBaseDamage[weapon] * multiplier;
         bool hit = Planet.Blocks.ContainsKey(key);
         var muzzle = origin + shotDirection * 19;
         _hitKeys.Clear();
@@ -229,14 +234,14 @@ public partial class Main : Node2D
                 endpoint = Center + MiningPlanet.KeyPoint(candidate);
                 if (_hitKeys.Count >= 1) break;
             }
-            for (int i = 0; i < _hitKeys.Count; i++) Planet.Damage(_hitKeys[i], 1.1 * multiplier * Math.Pow(0.68, i));
+            for (int i = 0; i < _hitKeys.Count; i++) Planet.Damage(_hitKeys[i], damage * Math.Pow(0.68, i));
             AddBeam([muzzle, endpoint], Palette.Weapon(0), 0.11f);
             if (hit) SpawnSparks(target, Palette.Weapon(0), 5);
             Sound.Play("laser", _rng.RandfRange(0.94f, 1.06f));
         }
         else if (weapon == 1)
         {
-            Projectiles.Add(new Shell { Position = muzzle, Target = target, Damage = 3.2 * multiplier, Speed = 260, Life = 2.5f });
+            Projectiles.Add(new Shell { Position = muzzle, Target = target, Damage = damage, Speed = 260, Life = 2.5f });
             Sound.Play("blast", 1.6f);
         }
         else if (weapon == 2)
@@ -254,7 +259,7 @@ public partial class Main : Node2D
                 _beamPath.Add(from.Lerp(p, 0.4f) + new Vector2(_rng.RandfRange(-9, 9), _rng.RandfRange(-9, 9)));
                 _beamPath.Add(from.Lerp(p, 0.72f) + new Vector2(_rng.RandfRange(-7, 7), _rng.RandfRange(-7, 7)));
                 _beamPath.Add(p);
-                Planet.Damage(hitKey, 1.6 * multiplier * Math.Pow(0.87, i));
+                Planet.Damage(hitKey, damage * Math.Pow(0.87, i));
                 SpawnSparks(p, Palette.Weapon(2), 3);
                 var next = Planet.Nearest(p - Center, _hitKeys);
                 if (next == MiningPlanet.NoTarget || MiningPlanet.KeyPoint(next).DistanceTo(p - Center) > 61) break;
@@ -266,7 +271,7 @@ public partial class Main : Node2D
         else if (weapon == 3)
         {
             // A real expanding damage front, not a delayed instantaneous area hit.
-            if (Waves.Count < 16) Waves.Add(new NovaWave { Position = target, Damage = 5.8 * multiplier, Radius = 104, Duration = 1.6f });
+            if (Waves.Count < 16) Waves.Add(new NovaWave { Position = target, Damage = damage, Radius = 104, Duration = 1.6f });
             Sound.Play("blast", 0.65f);
         }
         else if (weapon == 4)
@@ -281,7 +286,7 @@ public partial class Main : Node2D
             foreach (var candidate in _hitKeys)
             {
                 double armorCut = Planet.Blocks.TryGetValue(candidate, out var ore) && ore.Material >= 0 ? 2.5 : 1;
-                Planet.Damage(candidate, 2.6 * multiplier * armorCut);
+                Planet.Damage(candidate, damage * armorCut);
             }
             AddBeam([muzzle, target + shotDirection * 24], Palette.Weapon(4), 0.24f);
             Sound.Play("laser", 0.7f);
@@ -314,7 +319,7 @@ public partial class Main : Node2D
     {
         VisualStyleIndex = Math.Clamp(index, 0, VisualStyles.Count - 1);
         Planet.GetNode<PlanetRenderer>("Renderer").Style = CurrentVisualStyle;
-        Planet.NotifyTilesChanged();
+        Planet.NotifyTilesChanged(false);
         var stars = GetNode<Starfield>("Starfield");
         stars.Style = CurrentVisualStyle;
         stars.QueueRedraw();
@@ -332,6 +337,7 @@ public partial class Main : Node2D
 
     public void ReleaseControls()
     {
+        ClearLaserBeams();
         Controls?.Release();
         Hud?.CancelTouches();
     }
@@ -340,6 +346,7 @@ public partial class Main : Node2D
     {
         if (value == AutoMode) return;
         AutoMode = value;
+        Autopilot.Reset(ShipAngle);
         OrbitAngle = (ShipPosition - Center).Angle();
         AimKey = MiningPlanet.NoTarget;
         ReleaseControls();
@@ -393,8 +400,15 @@ public partial class Main : Node2D
         int kind = ore.Kind;
         long energy = kind == MiningPlanet.Crystal ? 1 : kind == MiningPlanet.Core ? 5 : 0;
         double earned = ore.Value * (1 + Math.Min(Levels[2], 50) * 0.04);
+        int previousRank = EngineeringRank;
         TotalMined++;
         SessionMined++;
+        if (EngineeringRank > previousRank)
+        {
+            EquipmentMessage = $"Mining research reached rank {EngineeringRank}. New blueprints, bays and ship mounts are available.";
+            Toast($"ENGINEERING RANK {EngineeringRank}", "Mining research unlocked new fleet options. Open Ship Systems.", Palette.Weapon(2), 3);
+            if (Hud.PanelKind is "systems" or "fabricator" or "fleet" or "market") Hud.RefreshInventory();
+        }
         for (int i = 0; i < 2; i++)
             Debris.Add(new DebrisFragment
             {
@@ -448,8 +462,8 @@ public partial class Main : Node2D
 
     private void OnChainBlast(Vector2 point)
     {
-        AddRing(point, 4, 57, Palette.ChainBlast, 0.38f);
-        SpawnSparks(point, Palette.ChainSparks, 4);
+        AddRing(point, 3, Planet.GenerationSettings.ExplosiveRadius, Palette.ChainBlast, 0.65f, 0.9f);
+        SpawnSparks(point, Palette.ChainSparks, 10);
         Sound.Play("blast", 1.2f);
     }
 
@@ -557,8 +571,11 @@ public partial class Main : Node2D
         Particles.Add(new Particle { Position = point, Velocity = velocity, Color = color, Life = life, MaxLife = life, Size = size });
     }
     private void AddBeam(Vector2[] points, Color color, float life) => Beams.Add(new Beam { Points = points, Color = color, Life = life, MaxLife = life });
-    public void AddRing(Vector2 point, float start, float finish, Color color, float life) =>
-        Rings.Add(new Ring { Position = point, Start = start, Finish = finish, Color = color, Life = life, MaxLife = life });
+    public void AddRing(Vector2 point, float start, float finish, Color color, float life, float strength = 0.28f)
+    {
+        if (Rings.Count >= 64) Rings.RemoveAt(0);
+        Rings.Add(new Ring { Position = point, Start = start, Finish = finish, Color = color, Life = life, MaxLife = life, Strength = strength });
+    }
 
     public void Toast(string title, string subtitle, Color color, float duration)
     {
@@ -578,6 +595,13 @@ public partial class Main : Node2D
     {
         Muted = !Muted;
         Sound.Enabled = !Muted;
+        Hud.Refresh();
+        SaveProgress();
+    }
+
+    public void GrantTestCredits()
+    {
+        Credits += 1_000_000_000d;
         Hud.Refresh();
         SaveProgress();
     }

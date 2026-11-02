@@ -16,10 +16,12 @@ public sealed class PlanetGenerator
         _rng.Seed = (ulong)sector * 104729 + 777;
         tiles.Clear();
         double totalValue = 0;
-        double radius = MiningPlanet.BaseRadius + Math.Min((sector - 1) * rules.RadiusGrowthPerSector, rules.MaximumExtraRadius);
+        double radius = rules.RadiusForSector(sector);
         double toughness = rules.Toughness(sector);
-        for (int y = -MiningPlanet.MaxGridExtent; y <= MiningPlanet.MaxGridExtent; y++)
-        for (int x = -MiningPlanet.MaxGridExtent; x <= MiningPlanet.MaxGridExtent; x++)
+        int extent = (int)Math.Ceiling(radius + Math.Max(Math.Abs(rules.SurfaceNoiseMin), Math.Abs(rules.SurfaceNoiseMax)));
+        if (extent > MiningPlanet.MaxGridExtent) throw new InvalidOperationException("Planet radius exceeds the supported save-grid bounds.");
+        for (int y = -extent; y <= extent; y++)
+        for (int x = -extent; x <= extent; x++)
         {
             var key = new Vector2I(x, y);
             double dist = new Vector2(x, y).Length();
@@ -48,6 +50,7 @@ public sealed class PlanetGenerator
                 depth >= rules.AetherDepth && deposit < rules.AetherChance ? 2 :
                 depth >= rules.IridiumDepth && deposit >= rules.AetherChance && deposit < rules.IridiumChance + rules.AetherChance ? 1 :
                 depth >= rules.TitaniumDepth && deposit >= rules.IridiumChance + rules.AetherChance && deposit < rules.TitaniumChance + rules.IridiumChance + rules.AetherChance ? 0 : -1;
+            if (kind == MiningPlanet.Volatile) material = -1; // Charges are their own cells, never hidden inside rare deposits.
             if (material >= 0) hp *= material == 0 ? rules.TitaniumHardness : material == 1 ? rules.IridiumHardness : rules.AetherHardness;
             tiles.Add(key, new OreBlock
             {
