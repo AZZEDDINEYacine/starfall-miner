@@ -1,0 +1,70 @@
+[gd_resource type="Theme" load_steps=7 format=3]
+
+[ext_resource type="FontFile" path="res://assets/Interface.ttf" id="1"]
+
+[sub_resource type="StyleBoxFlat" id="normal"]
+bg_color = Color(0.054901961, 0.098039216, 0.129411765, 1.000000000)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.160784314, 0.250980392, 0.278431373, 1.000000000)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+content_margin_left = 12.0
+content_margin_right = 12.0
+
+[sub_resource type="StyleBoxFlat" id="hover"]
+bg_color = Color(0.090196078, 0.164705882, 0.192156863, 1.000000000)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.549019608, 0.917647059, 0.796078431, 1.000000000)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+content_margin_left = 12.0
+content_margin_right = 12.0
+
+[sub_resource type="StyleBoxFlat" id="pressed"]
+bg_color = Color(0.145098039, 0.274509804, 0.247058824, 1.000000000)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.549019608, 0.917647059, 0.796078431, 1.000000000)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+content_margin_left = 12.0
+content_margin_right = 12.0
+
+[sub_resource type="StyleBoxFlat" id="panel"]
+bg_color = Color(0.054901961, 0.098039216, 0.129411765, 1.000000000)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.160784314, 0.250980392, 0.278431373, 1.000000000)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+content_margin_left = 12.0
+content_margin_right = 12.0
+
+[resource]
+default_font = ExtResource("1")
+default_font_size = 15
+Button/colors/font_color = Color(0.898039216, 0.945098039, 0.941176471, 1.000000000)
+Button/colors/font_hover_color = Color(0.898039216, 0.945098039, 0.941176471, 1.000000000)
+Button/colors/font_pressed_color = Color(0.549019608, 0.917647059, 0.796078431, 1.000000000)
+Button/styles/normal = SubResource("normal")
+Button/styles/hover = SubResource("hover")
+Button/styles/pressed = SubResource("pressed")
+Panel/styles/panel = SubResource("panel")

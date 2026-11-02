@@ -1,0 +1,29 @@
+[gd_scene load_steps=11 format=3]
+
+[ext_resource type="Script" path="res://scripts/Hud.cs" id="1"]
+[ext_resource type="Theme" path="res://resources/hud_theme.tres" id="2"]
+[ext_resource type="FontFile" path="res://assets/Interface.ttf" id="3"]
+[ext_resource type="FontFile" path="res://assets/Telemetry.ttf" id="4"]
+[ext_resource type="PackedScene" path="res://scenes/ui/touch_button.tscn" id="5"]
+[ext_resource type="PackedScene" path="res://scenes/ui/panel.tscn" id="6"]
+
+[ext_resource type="Resource" path="res://resources/mode_transition.tres" id="7"]
+[ext_resource type="PackedScene" path="res://scenes/ui/hologram_channel.tscn" id="8"]
+[ext_resource type="Resource" path="res://resources/hologram_style.tres" id="9"]
+[ext_resource type="Texture2D" path="res://resources/hud_atmosphere.tres" id="10"]
+
+[node name="Hud" type="Control"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+theme = ExtResource("2")
+script = ExtResource("1")
+RegularFont = ExtResource("3")
+MonoFont = ExtResource("4")
+ButtonScene = ExtResource("5")
+PanelScene = ExtResource("6")
+Motion = ExtResource("7")
+ChannelScene = ExtResource("8")
+Hologram = ExtResource("9")
+Atmosphere = ExtResource("10")
