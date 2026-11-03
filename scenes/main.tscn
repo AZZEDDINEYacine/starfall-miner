@@ -1,6 +1,60 @@
-[gd_scene format=3 uid="uid://diymmfvbg4egi"]
+[gd_scene load_steps=20 format=3 uid="uid://diymmfvbg4egi"]
 
 [ext_resource type="Script" path="res://scripts/Main.cs" id="1"]
+[ext_resource type="Script" path="res://scripts/Starfield.cs" id="2"]
+[ext_resource type="Script" path="res://scripts/WorldView.cs" id="3"]
+[ext_resource type="PackedScene" path="res://scenes/world/planet.tscn" id="4"]
+[ext_resource type="Script" path="res://scripts/Visuals.cs" id="5"]
+[ext_resource type="Script" path="res://scripts/MiningSound.cs" id="6"]
+[ext_resource type="Script" path="res://scripts/FlightInput.cs" id="7"]
+[ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="8"]
+[ext_resource type="Resource" path="res://resources/starfall_palette.tres" id="9"]
+
+[ext_resource type="Resource" path="res://resources/mode_transition.tres" id="10"]
+[ext_resource type="PackedScene" path="res://scenes/ui/mode_status.tscn" id="11"]
+[ext_resource type="Resource" path="res://resources/manual_flight.tres" id="12"]
+[ext_resource type="Script" path="res://scripts/PlanetVisualStyle.cs" id="13"]
+[ext_resource type="Resource" path="res://resources/world_styles/neon_frontier.tres" id="14"]
+[ext_resource type="Resource" path="res://resources/planet_visual_style.tres" id="22"]
+[ext_resource type="Resource" path="res://resources/crafting_catalog.tres" id="23"]
+
+
+[ext_resource type="Resource" path="res://resources/autopilot_flight.tres" id="32"]
+
+[ext_resource type="Resource" path="res://resources/progression.tres" id="33"]
 
 [node name="StarfallMiner" type="Node2D" unique_id=1048214272]
 script = ExtResource("1")
+Palette = ExtResource("9")
+FlightSettings = ExtResource("12")
+PilotSettings = ExtResource("32")
+Catalog = ExtResource("23")
+Progression = ExtResource("33")
+VisualStyles = Array[ExtResource("13")]([ExtResource("14"), ExtResource("22")])
+
+[node name="Starfield" type="Node2D" parent="."]
+script = ExtResource("2")
+Palette = ExtResource("9")
+
+[node name="WorldView" type="Node" parent="."]
+script = ExtResource("3")
+Motion = ExtResource("10")
+
+[node name="PersistentWorld" type="Node2D" parent="WorldView"]
+
+[node name="Planet" parent="WorldView/PersistentWorld" instance=ExtResource("4")]
+
+[node name="Visuals" type="Node2D" parent="WorldView/PersistentWorld"]
+script = ExtResource("5")
+
+[node name="MiningSound" type="Node" parent="."]
+script = ExtResource("6")
+
+[node name="FlightInput" type="Node" parent="."]
+script = ExtResource("7")
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="Hud" parent="UI" instance=ExtResource("8")]
+
+[node name="ModeStatus" parent="UI" instance=ExtResource("11")]

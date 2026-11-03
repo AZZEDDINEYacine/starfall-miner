@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="ManualFlightSettings" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ManualFlightSettings.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+CruiseSpeed = 190.0
+MiningStandOff = 40.0
+ApproachResponse = 3.0
+PointerDeadZone = 24.0

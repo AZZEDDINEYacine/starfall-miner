@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="AutopilotSettings" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/AutopilotSettings.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+SensorRange = 320.0
+ConeHalfAngle = 85.0
+MiningDistance = 88.0
+MiningTolerance = 16.0
+MinimumDistance = 45.0
+Acceleration = 230.0
+TurnSpeed = 2.6
+SearchSpeed = 120.0
+ScanInterval = 0.10
+ClearanceStallTime = 1.1
+ClearanceProgress = 12.0

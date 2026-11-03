@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="PlanetVisualStyle" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/PlanetVisualStyle.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+Id = "neon_frontier"
+Title = "CLEAN FRONTIER"
+Description = "Simple pixels, clear rim"
+Treatment = 1
+TileSize = 16.0
+DamageBrightnessExponent = 0.7
+OreColors = PackedColorArray(0.00000, 0.42353, 0.44706, 1, 0.13333, 0.67451, 0.61569, 1, 0.00000, 0.72549, 0.80784, 1, 0.60784, 0.25490, 0.37647, 1, 0.59216, 0.36078, 0.87843, 1)
+DamagedColors = PackedColorArray(0.61176, 1.00000, 1.00000, 1, 0.91765, 1.00000, 0.70980, 1, 0.87451, 1.00000, 1.00000, 1, 1.00000, 0.70980, 0.74118, 1, 0.93725, 0.79216, 1.00000, 1)
+Backdrop = Color(0.03137, 0.05490, 0.06275, 1)
+StarTint = Color(0.28235, 0.79216, 0.81569, 1)
+EdgeTint = Color(0.85098, 1.00000, 1.00000, 1)
+GlowStrength = 0.28
