@@ -17,6 +17,8 @@ python3 tools/rendered_check.py     # rendered inspection + touchscreen checks +
 
 SDK caches are kept under `.godot/`, outside source control. `NuGet.Config` includes the matching packages bundled with this Mac's Godot installation plus NuGet.org for runtime packs. Set `GODOT4` to the engine executable and adjust that feed if installing Godot elsewhere. `StarfallMiner.sln`, VS Code build/test/export tasks, and C# launch/attach configurations are included. Install the recommended Microsoft C# extension for debugging. The F5 launch configuration uses this Mac's Godot executable explicitly.
 
+The CLI launcher uses `GODOT4` first, then an existing executable configured by `godotTools.editorPath.godot4` in `.vscode/settings.json`, then `godot-mono` / `godot4-mono` / `godot` on PATH, with the original macOS path as its final fallback. It prints the selected executable when launching Godot. This project requires the **.NET edition**: a standard Godot binary cannot load `.cs` scripts even when the .NET SDK is installed.
+
 Tests and inspection require `--test` and `--qa`, respectively. These runs never load or modify `user://starfall_save_v1.json`; their explicit persistence tests use `.godot/tests/`. Do not run two persistence regression suites concurrently because they share that disposable file.
 
 Do not build or export an Android APK/AAB unless the user explicitly requests it. Use local C# builds and desktop checks for normal development. Existing packages do not include subsequent source changes.
@@ -38,7 +40,9 @@ Do not build or export an Android APK/AAB unless the user explicitly requests it
 
 Both modes stay in portrait. Switching modes changes the HUD and eases the camera zoom using `resources/mode_transition.tres`; it never rotates or resizes the native window. Camera and HUD transitions retain the live planet, ship, projectiles, and collectible fragments. The camera follows the ship in both modes, without confining movement to screen edges.
 
-The HUD uses open holographic telemetry rather than boxed statistic cards: cyan capital readouts, amber reactor segments, angular controls, and a manual-flight reticle with live velocity and heading. On startup and mode changes, six manual HUD modules ignite in staggered order over **3 seconds**, with a white-hot overshoot, abrupt failed neon strikes, brief blackouts, diminishing contact chatter and visible stepped jitter, and a softly glowing settled state. Modal cards use the same ignition on entry. Ship/Craft/Fleet/Market share one workshop visit: switching or reselecting tabs, paging, purchases and resizing keep it settled. Closing and reopening the workshop can play its entry ignition again. There is no whole-HUD slide or alpha fade on entry. Touch targets remain usable during ignition, and closing a modal does not replay the full HUD sequence.
+The HUD uses a midnight-navy observatory palette, open white/cyan telemetry, amber reactor segments, sharp Inter typography, a fine illuminated viewport frame and glass surfaces with restrained upper-edge highlights. Shared buttons distinguish normal, hover, pressed, selected, disabled and modal keyboard-focus states. Background depth comes from detailed static blue/violet nebula artwork, a cropped distant ringed planet, fine orbital lines and 156 foreground stars; decoration never receives input. Wide desktop windows use compact header modules, centered flight controls and a workshop with its fitted-hull preview beside the content. Portrait retains the flight hit areas; shorter workshop panels scroll their rows while keeping the preview, status and Back controls visible. The live hull sits over a static orbital drydock diagram. Phone orientation remains portrait.
+
+On startup and mode changes, six manual HUD modules ignite in staggered order over **3 seconds**, with a white-hot overshoot, abrupt failed neon strikes, brief blackouts, diminishing contact chatter and visible stepped jitter. Modal cards use the same ignition on entry. Ship/Craft/Fleet/Market share one workshop visit: switching or reselecting tabs, paging, purchases and resizing keep it settled. Closing and reopening the workshop can play its entry ignition again. There is no whole-HUD slide or alpha fade on entry, and the new galaxy and terrain lighting are static. Touch targets remain usable during ignition, and closing a modal does not replay the full HUD sequence.
 
 Manual mode is designed for one thumb: hold on space to guide the ship and drag that same finger to turn. The held point is updated as the camera follows, so the ship keeps moving while your thumb stays down rather than stopping at the initial world point. Release to stop. Dragging onto the ship enters a small dead zone; dragging away resumes steering without lifting. The ship slows on approach to blocking ore, mines from a safety stand-off, then continues as the path clears. A mint guide turns gold while mining. `resources/manual_flight.tres` exposes cruising speed, extra mining clearance, approach response, and the pointer dead zone in the Inspector.
 
@@ -71,6 +75,8 @@ The **Flux beam** is a rank-one craft in Fabricator → Weapons (second blueprin
 Open **Pause → Compare World Designs**. The chooser stays at the bottom while the same frozen world previews each selection immediately. Resume keeps the chosen appearance; it is also remembered in the save. Switching never regenerates terrain, changes collision, alters remaining health or rewards, or moves the ship. It works in both manual and automatic modes.
 
 Only two designs remain: **Clean Frontier (Default)** and **Original (Classic Grid)**. The other presets and their rendering branches have been removed. Older saves that selected one fall back to Clean Frontier while preserving all planet/equipment/progression data.
+
+Clean Frontier samples one continuous detailed basalt texture across surviving ordinary squares, with fixed upper-left hemispheric lighting, broad relief and a blue rim on exposed edges. The texture is drawn only for remaining ordinary cells, so excavated gaps remain open space. `SurfaceTexture`, `TextureGain`, `SurfaceDetail` and `DirectionalLight` in its resource control the treatment. Original retains its flat grid; both retain damage brightening and deterministic sector hues. Resource/charge rendering, colors, collision and terrain data are unchanged. The distant ringed body is screen-space background decoration and has no gameplay identity.
 
 Resources occupy their **own complete colored grid squares**, with no rock inset, badge, stripes or identifying glyph. Titanium is silver, Iridium violet, Aether amber; gold and crystals use gold/cyan, and impact charges are red. Titanium/gold stay plain. Selected energy cells share a subtle fusion-like hot core with circulating plasma; animation is capped at 128 orbiting particles, uses no per-cell nodes and pauses with the world.
 
@@ -143,11 +149,13 @@ The template's .NET 9 target reaches the end of Microsoft support on **10 Novemb
 ```sh
 python3 tools/dev.py qa
 # In a second terminal:
-python3 tools/inspect.py '{"command":"state"}'
-python3 tools/inspect.py '{"command":"screenshot","name":"review.png"}'
-python3 tools/inspect.py '{"command":"touch","x":108,"y":428,"finger":2,"pressed":true}'
-python3 tools/inspect.py '{"command":"quit"}'
+python3 tools/qa_client.py '{"command":"state"}'
+python3 tools/qa_client.py '{"command":"screenshot","name":"review.png"}'
+python3 tools/qa_client.py '{"command":"touch","x":108,"y":428,"finger":2,"pressed":true}'
+python3 tools/qa_client.py '{"command":"quit"}'
 ```
+
+The helper is named `qa_client.py` so it does not shadow Python's standard-library `inspect` module when launching scripts from `tools/` (including Python 3.14's argument-parser color support).
 
 The C# QA scene binds only `127.0.0.1:47831`, requires `--qa`, and uses isolated saves. It supports state, freeze, resize, touch, drag, emulated mouse, engine mouse press/release (`desktop_mouse`) and motion (`desktop_motion`), lifecycle notifications, screenshots, and quit. Desktop events use `Input.ParseInputEvent` with window-scaled coordinates; touch injection uses `Viewport.PushInput`. Neither is a physical hardware test. PNGs are restricted to `builds/qa/`. Rendering is forced for screenshots even when macOS occludes the window behind the IDE. Runtime logs and `rendered-results.json` are also under `builds/qa/`. The QA scene is not enabled by the normal main scene and is excluded from native exports.
 
@@ -162,7 +170,9 @@ There is no Web export preset. The older browser demo in the surrounding deliver
 
 ## License
 
-Original code, procedural graphics, and synthesized sound are MIT-licensed; see `LICENSE`. DejaVu fonts retain `assets/FONT_LICENSE.txt`. `THIRD_PARTY_NOTICES.txt` contains the Godot and engine dependency notices. Auto Drill: Galaxy was a gameplay reference; none of its assets or code are included.
+Original code, procedural graphics, and synthesized sound are MIT-licensed; see `LICENSE`. The interface bundles unmodified Inter Regular and Semibold from the [official Inter 4.1 release](https://github.com/rsms/inter/releases/tag/v4.1), with its SIL Open Font License in `assets/INTER_LICENSE.txt`. Both export presets include that notice. Retained DejaVu fonts keep `assets/FONT_LICENSE.txt`. No installed system font is required. `THIRD_PARTY_NOTICES.txt` contains the Godot and engine dependency notices. Auto Drill: Galaxy was a gameplay reference; none of its assets or code are included.
+
+The user-approved original space artwork is bundled under `assets/art/`; `assets/art/README.md` records the built-in imagegen prompts, dimensions and intended use. The two supplied visual references are not bundled. No remote service, downloaded image or installed image package is required at runtime. Small UI glass surfaces are authored SVGs under `assets/ui/`.
 
 ## Editing presentation in Godot
 
@@ -172,6 +182,8 @@ Original code, procedural graphics, and synthesized sound are MIT-licensed; see 
 - **Change the planet’s presentation:** `resources/world_styles/neon_frontier.tres` supplies Default and `resources/planet_visual_style.tres` supplies Original. The `VisualStyles` array on `StarfallMiner` registers their pause-menu order. Keep their IDs stable for saved preferences. `PlanetRenderer` draws the same tile data with visible-cell culling; rare-resource colors come from `resources/crafting_catalog.tres`.
 - **Change world colors:** edit the selected preset's `OreColors` / `DamagedColors`, `Backdrop`, `StarTint`, and `EdgeTint`. These are independent of the geometry treatment. `resources/starfall_palette.tres` remains the shared weapon/ship/modal palette and the fallback for Classic Grid. `resources/hologram_style.tres` controls terminal HUD inks and halos.
 - **Change fonts and reusable UI:** open `scenes/ui/hud.tscn`. Fonts, shared theme, and the reusable `TouchButton` / `Panel` scenes are assigned in the Inspector. Adjust margins, borders and corner radii in `resources/hud_theme.tres`; runtime colors come from the palette (the theme is duplicated and tinted at startup).
+- **Change the static galaxy:** the palette's `NebulaArtwork`, `DistantPlanetArtwork` and opacity fields supply the shared images under `assets/art/`. `Starfield` cover-crops the nebula, places the distant planet primarily behind the command area and draws three fixed orbital arcs. Its 18 procedural cloud patches remain a fallback when no nebula is assigned. There is no animation process, parallax or input surface.
+- **Change glass surfaces:** `resources/hologram_style.tres` references the two nine-slice SVG surfaces in `assets/ui/`. `GlassSurface.cs` paints them beneath native control text. `ObservatoryFrame.cs` supplies the static edge frame; all decorative controls ignore input and do not process frames.
 - **Change holographic activation:** `resources/mode_transition.tres` exposes `ActivationDuration` (3 s), `StaggerFraction`, `IgnitionPeak`, and `JitterPixels`, alongside the camera settings. `scenes/ui/hologram_channel.tscn` supplies the reusable module. `resources/hud_atmosphere.tres` is the low-resolution gradient that keeps floating readouts legible over ore.
 - **Change manual handling:** open `resources/manual_flight.tres` to tune `CruiseSpeed`, `MiningStandOff`, `ApproachResponse`, and `PointerDeadZone`. These are gameplay settings, separate from the camera and HUD animation resource.
 - **Change logic:** `Main.cs` handles game state, `ManualNavigation.cs` handles held steering and safe path clearing, `PlanetGenerator.cs` handles pure procedural tile creation, `MiningPlanet.cs` handles destructible ore state and collisions, `PlanetRenderer.cs` handles drawing, `WorldView.cs` handles portrait framing and camera following, `Hud.cs` handles responsive UI positions and interactions, `Visuals.cs` draws transient effects, and `Starfield.cs` owns the background.
@@ -179,6 +191,8 @@ Original code, procedural graphics, and synthesized sound are MIT-licensed; see 
 The destructible grid, particles, ship, and route marker are drawn procedurally. Thousands of tiny changing cells should not become thousands of editor nodes. The responsive HUD layout and modals are still generated in `Hud.cs`, so not every label or control is individually editable in the scene tree. The palette and reusable button/panel appearances are editor-editable.
 
 Run `python3 tools/dev.py test`, `python3 tools/dev.py test-rendered`, and inspect both modes in portrait with Godot 4.7.2 .NET / .NET 10. A standalone game window remains the verified macOS rendering path; embedded editor play has not been revalidated since removing mode-driven resizing.
+
+For the new artwork, run `python3 tools/dev.py build`, then open this project in the existing **.NET Godot editor** and wait for the new PNG/SVG imports. On the Fedora setup the headless `import` command has a recorded native editor-exit crash; use the normal editor import path for this step. Then launch with `python3 tools/dev.py run` and run the documented checks sequentially. The newer artwork/glass revision has only been inspected in source and as image assets by the assistant; earlier passing test counts do not validate it.
 
 ## Procedural planet data / rendering boundary
 
@@ -196,7 +210,7 @@ Editor resources author appearance and generation rules rather than individual t
 - `scenes/ui/mode_status.tscn` is a compact link-status readout using the same ignition envelope. It stabilizes after 3 seconds and stays readable rather than covering the flight view with a large announcement.
 - Open `resources/mode_transition.tres` to tune camera and ignition timing without editing C#. The earlier slide/status-duration fields have been replaced by the activation controls above.
 
-Holographic glow uses a few antialiased vector halo strokes and font outlines; the atmosphere is a 1 × 128 gradient texture. No HDR renderer change, full-screen blur, extra viewport, or runtime-generated glow texture is required. Animation processing stops for each module once settled. Physical mobile frame time and thermal behavior still require device profiling.
+Holographic glow uses a few antialiased vector halo strokes around controls and instrument traces; labels stay sharp. The HUD atmosphere is a 1 × 128 gradient texture. No HDR renderer change, full-screen blur, extra viewport, or runtime-generated glow texture is required. Animation processing stops for each module once settled. Physical mobile frame time and thermal behavior still require device profiling.
 
 **Desktop note:** Switching modes preserves the native window dimensions. Hold the left mouse button and move to steer; release to stop.
 

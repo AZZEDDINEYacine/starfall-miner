@@ -5,7 +5,7 @@ from pathlib import Path
 import subprocess
 import time
 from dev import ROOT, GODOT, ENV
-from inspect import request
+from qa_client import request
 
 
 def touch(x, y, pressed, finger=7, canceled=False):

@@ -17,8 +17,7 @@ public partial class ModeStatusOverlay : Control
         _title = GetNode<Label>("Title");
         _subtitle = GetNode<Label>("Subtitle");
         _title.AddThemeColorOverride("font_color", Hologram.Cyan);
-        _title.AddThemeColorOverride("font_outline_color", new Color(Hologram.Cyan, 0.12f));
-        _title.AddThemeConstantOverride("outline_size", 2);
+        _title.AddThemeConstantOverride("outline_size", 0);
         _subtitle.AddThemeColorOverride("font_color", Hologram.Dim);
         GetViewport().SizeChanged += PlaceElements;
         PlaceElements();
@@ -28,18 +27,19 @@ public partial class ModeStatusOverlay : Control
 
     public void Play(bool auto)
     {
-        _title.Text = auto ? "AUTO / MINING ONLINE" : "MANUAL / LINK ESTABLISHED";
-        _subtitle.Text = "SYSTEMS NOMINAL";
+        _title.Text = auto ? "Autopilot · Mining online" : "Manual · Link established";
+        _subtitle.Text = "Systems nominal";
         Visible = true;
         Seek(0);
     }
 
     private void PlaceElements()
     {
-        float width = GetViewportRect().Size.X - 48;
-        _title.Position = new Vector2(24, 210);
+        float width = Mathf.Min(GetViewportRect().Size.X - 48, 640);
+        float left = (GetViewportRect().Size.X - width) * 0.5f;
+        _title.Position = new Vector2(left, 210);
         _title.Size = new Vector2(width * 0.65f, 18);
-        _subtitle.Position = new Vector2(24 + width * 0.65f, 210);
+        _subtitle.Position = new Vector2(left + width * 0.65f, 210);
         _subtitle.Size = new Vector2(width * 0.35f, 18);
     }
 

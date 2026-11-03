@@ -1,24 +1,32 @@
-[gd_resource type="Resource" script_class="VisualPalette" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="VisualPalette" load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/VisualPalette.cs" id="1"]
+[ext_resource type="Texture2D" path="res://assets/art/nebula-blue-violet.png" id="2"]
+[ext_resource type="Texture2D" path="res://assets/art/ringed-world.png" id="3"]
 
 [resource]
 script = ExtResource("1")
-Background = Color(0.031372549, 0.050980392, 0.086274510, 1.000000000)
-Stars = Color(0.650980392, 0.800000000, 0.874509804, 1.000000000)
-Ink = Color(0.898039216, 0.945098039, 0.941176471, 1.000000000)
-MutedInk = Color(0.470588235, 0.568627451, 0.592156863, 1.000000000)
-Mint = Color(0.549019608, 0.917647059, 0.796078431, 1.000000000)
-Gold = Color(0.901960784, 0.792156863, 0.549019608, 1.000000000)
-Lilac = Color(0.721568627, 0.674509804, 0.941176471, 1.000000000)
-PanelColor = Color(0.054901961, 0.098039216, 0.129411765, 1.000000000)
-Edge = Color(0.160784314, 0.250980392, 0.278431373, 1.000000000)
-ButtonHover = Color(0.090196078, 0.164705882, 0.192156863, 1.000000000)
-ButtonPressed = Color(0.145098039, 0.274509804, 0.247058824, 1.000000000)
-ModeBackground = Color(0.070588235, 0.172549020, 0.156862745, 1.000000000)
-WeaponSelectedBackground = Color(0.090196078, 0.176470588, 0.192156863, 1.000000000)
+Background = Color(0.0196, 0.0314, 0.0667, 1)
+Stars = Color(0.76, 0.84, 1, 1)
+NebulaBlue = Color(0.1922, 0.3608, 0.6667, 1)
+NebulaViolet = Color(0.4588, 0.3137, 0.6627, 1)
+NebulaArtwork = ExtResource("2")
+DistantPlanetArtwork = ExtResource("3")
+NebulaOpacity = 0.72
+DistantPlanetOpacity = 0.46
+Ink = Color(0.9294, 0.9529, 1, 1)
+MutedInk = Color(0.58, 0.65, 0.77, 1)
+Mint = Color(0.1765, 0.8627, 1, 1)
+Gold = Color(1, 0.79, 0.49, 1)
+Lilac = Color(0.6078, 0.4275, 1, 1)
+PanelColor = Color(0.0431, 0.0745, 0.1451, 0.98)
+Edge = Color(0.18, 0.29, 0.43, 1)
+ButtonHover = Color(0.07, 0.14, 0.24, 1)
+ButtonPressed = Color(0.09, 0.22, 0.31, 1)
+ModeBackground = Color(0.06, 0.17, 0.25, 1)
+WeaponSelectedBackground = Color(0.06, 0.17, 0.25, 1)
 ResetWarning = Color(0.949019608, 0.662745098, 0.596078431, 1.000000000)
-ModalScrim = Color(0.019607843, 0.035294118, 0.050980392, 1.000000000)
+ModalScrim = Color(0.0157, 0.0275, 0.0667, 1)
 StickOuter = Color(0.478431373, 0.729411765, 0.729411765, 1.000000000)
 StickInner = Color(0.592156863, 0.858823529, 0.800000000, 1.000000000)
 WeaponLance = Color(0.474509804, 0.952941176, 0.807843137, 1.000000000)

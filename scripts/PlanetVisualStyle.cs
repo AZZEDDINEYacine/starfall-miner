@@ -22,6 +22,11 @@ public partial class PlanetVisualStyle : Resource
 
     [Export(PropertyHint.Range, "0.1,3,0.05")]
     public float DamageBrightnessExponent { get; set; } = 0.7f;
+    [ExportGroup("Rock surface (presentation only)")]
+    [Export] public Texture2D? SurfaceTexture { get; set; }
+    [Export(PropertyHint.Range, "1,4,0.05")] public float TextureGain { get; set; } = 2.6f;
+    [Export(PropertyHint.Range, "0,0.3,0.01")] public float SurfaceDetail { get; set; } = 0.1f;
+    [Export(PropertyHint.Range, "0,1,0.01")] public float DirectionalLight { get; set; } = 0.22f;
 
     public Color OreColor(int kind, VisualPalette fallback) => OreColors.Length == 5 ? OreColors[Math.Clamp(kind, 0, 4)] : fallback.OreBase(kind);
     public Color DamagedColor(int kind, VisualPalette fallback) => DamagedColors.Length == 5 ? DamagedColors[Math.Clamp(kind, 0, 4)] : fallback.OreDamaged(kind);

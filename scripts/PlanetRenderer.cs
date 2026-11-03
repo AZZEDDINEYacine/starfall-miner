@@ -17,8 +17,12 @@ public partial class PlanetRenderer : Node2D
     public bool AnimationFrozen { get; set; }
     private MiningPlanet _planet = null!;
     private float _redrawTime;
+    private Vector2 _surfaceSize, _pixelsPerWorld;
     private static readonly Vector2I[] Neighbors = [Vector2I.Left, Vector2I.Up, Vector2I.Right, Vector2I.Down];
     private static readonly float[] SectorHueShift = [0, 0.12f, 0.24f, 0.58f, -0.11f, 0.06f];
+    private static readonly (Vector2 Center, float Radius)[] Basins =
+        [(new(-0.32f, -0.24f), 0.26f), (new(0.4f, 0.18f), 0.18f),
+         (new(-0.12f, 0.56f), 0.14f), (new(0.25f, -0.57f), 0.11f)];
     public static Color TerrainColor(Color ink, int sector)
     {
         float shift = SectorHueShift[Math.Max(0, sector - 1) % SectorHueShift.Length];
@@ -27,6 +31,7 @@ public partial class PlanetRenderer : Node2D
 
     public override void _Ready()
     {
+        TextureFilter = TextureFilterEnum.Linear;
         _planet = (MiningPlanet)GetParent();
         _planet.TilesChanged += OnTilesChanged;
         QueueRedraw();
@@ -69,13 +74,65 @@ public partial class PlanetRenderer : Node2D
             var a = p + (side switch { 0 => new Vector2(-8, -8), 1 => new Vector2(-8, -8), 2 => new Vector2(8, -8), _ => new Vector2(-8, 8) });
             var b = p + (side switch { 0 => new Vector2(-8, 8), 1 => new Vector2(8, -8), 2 => new Vector2(8, 8), _ => new Vector2(8, 8) });
             var edge = TerrainColor(Style.EdgeTint, Planet.Sector);
-            DrawLine(a, b, new Color(edge, Style.GlowStrength), 4, true);
-            DrawLine(a, b, edge, 1.1f, true);
+            float light = side is 0 or 1 ? 0.9f : 0.28f;
+            DrawLine(a, b, new Color(edge, Style.GlowStrength * light), 3, true);
+            DrawLine(a, b, new Color(edge, light), 0.9f, true);
         }
+    }
+    private void DrawRock(Vector2 p, Vector2I key, OreBlock block, uint hash)
+    {
+        // Relief and fixed upper-left lighting shade surviving stone only. Every mark
+        // stays inside its square; excavated gaps have no decorative underlay.
+        float relief = Mathf.Sin(key.X * 0.19f + Mathf.Sin(key.Y * 0.13f) * 1.8f) *
+            Mathf.Cos(key.Y * 0.17f - key.X * 0.07f);
+        var normalized = p / Mathf.Max(16, Planet.MapRadius);
+        float basinShade = 0;
+        // Four color-only basins, sampled on surviving visible squares; never a
+        // sphere, crater scene, or texture filling excavated terrain.
+        foreach (var basin in Basins)
+        {
+            float distance = normalized.DistanceTo(basin.Center) / basin.Radius;
+            if (distance >= 1.15f) continue;
+            basinShade += Mathf.Clamp(1 - distance, 0, 1) * Style.SurfaceDetail;
+            basinShade -= Mathf.Max(0, 1 - Mathf.Abs(distance - 0.96f) * 9) * Style.SurfaceDetail * 0.4f;
+        }
+        float hemisphere = Mathf.Sqrt(Mathf.Max(0, 1 - normalized.LengthSquared()));
+        float sunlight = Mathf.Clamp(-normalized.X * 0.62f - normalized.Y * 0.7f + hemisphere * 0.5f, 0, 1);
+        float illumination = Mathf.Clamp(Mathf.Lerp(1, 0.2f + sunlight * 0.9f, Style.DirectionalLight)
+            - (relief + 1) * Style.SurfaceDetail * 0.2f - basinShade, 0.16f, 1);
+        var color = TerrainColor(Style.BlockColor(block, Palette), Planet.Sector)
+            .Darkened(1 - illumination);
+        var face = new Rect2(p - Vector2.One * 8, Vector2.One * 16);
+        if (Style.SurfaceTexture != null)
+        {
+            // The same source coordinates meet at adjacent tile edges. Sample only
+            // surviving ordinary squares: no texture or sphere behind mined gaps.
+            var sourceSize = face.Size * _pixelsPerWorld;
+            var sourcePosition = ((face.Position + Vector2.One * Planet.MapRadius) * _pixelsPerWorld)
+                .Clamp(Vector2.Zero, _surfaceSize - sourceSize);
+            var source = new Rect2(sourcePosition, sourceSize);
+            var tint = new Color(color.R * Style.TextureGain, color.G * Style.TextureGain, color.B * Style.TextureGain, 1);
+            DrawTextureRectRegion(Style.SurfaceTexture, face, source, tint);
+        }
+        else DrawRect(face, color);
+        if (Style.SurfaceTexture == null && hash % 5 == 0)
+        {
+            float inset = 2 + hash % 3;
+            var a = p + new Vector2(-6, -inset);
+            var b = p + new Vector2(1, -inset + 2);
+            DrawLine(a, b, new Color(color.Lightened(0.2f), Style.SurfaceDetail * 2), 0.7f, true);
+            DrawLine(b, p + new Vector2(6, inset), new Color(color.Darkened(0.4f), Style.SurfaceDetail * 2), 0.7f, true);
+        }
+        Exterior(p, EdgeMask(key));
     }
     public override void _Draw()
     {
         VisibleSpecials = AnimatedParticles = 0;
+        if (Style.SurfaceTexture != null)
+        {
+            _surfaceSize = Style.SurfaceTexture.GetSize();
+            _pixelsPerWorld = _surfaceSize / (Mathf.Max(16, Planet.MapRadius) * 2);
+        }
         var transform = GetGlobalTransformWithCanvas();
         var visible = (transform.AffineInverse() * GetViewportRect()).Grow(MiningPlanet.Cell);
         int left = Mathf.FloorToInt(visible.Position.X / 16), right = Mathf.CeilToInt(visible.End.X / 16);
@@ -94,20 +151,10 @@ public partial class PlanetRenderer : Node2D
                 DrawSpecial(p, block, hash, screen.Y > 230 && screen.Y < GetViewportRect().Size.Y - 234);
                 continue;
             }
-            var color = TerrainColor(Style.BlockColor(block, Palette), Planet.Sector);
             if (Style.Treatment == PlanetVisualStyle.Surface.FlatGrid)
-                DrawRect(new Rect2(p - Vector2.One * Style.TileSize * 0.5f, Vector2.One * Style.TileSize), color);
+                DrawRect(new Rect2(p - Vector2.One * Style.TileSize * 0.5f, Vector2.One * Style.TileSize), TerrainColor(Style.BlockColor(block, Palette), Planet.Sector));
             else
-            {
-                int mask = EdgeMask(key);
-                float rim = mask != 0 ? 0.75f : 0;
-                if (rim == 0)
-                    for (int i = 0; i < 4; i++)
-                        if (!Planet.Blocks.ContainsKey(key + Neighbors[i] * 2)) { rim = 0.28f; break; }
-                var neon = color.Darkened(hash % 4 * 0.055f).Lerp(TerrainColor(Style.DamagedColor(MiningPlanet.Stone, Palette), Planet.Sector), rim);
-                DrawRect(new Rect2(p - Vector2.One * 8, Vector2.One * 16), neon);
-                Exterior(p, mask);
-            }
+                DrawRock(p, key, block, hash);
         }
     }
     private void DrawSpecial(Vector2 p, OreBlock block, uint hash, bool inFlightArea)

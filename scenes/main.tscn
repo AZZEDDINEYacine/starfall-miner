@@ -22,6 +22,7 @@
 [ext_resource type="Resource" path="res://resources/autopilot_flight.tres" id="32"]
 
 [ext_resource type="Resource" path="res://resources/progression.tres" id="33"]
+[ext_resource type="Texture2D" path="res://resources/galaxy_cloud.tres" id="34"]
 
 [node name="StarfallMiner" type="Node2D" unique_id=1048214272]
 script = ExtResource("1")
@@ -35,6 +36,7 @@ VisualStyles = Array[ExtResource("13")]([ExtResource("14"), ExtResource("22")])
 [node name="Starfield" type="Node2D" parent="."]
 script = ExtResource("2")
 Palette = ExtResource("9")
+GalaxyCloud = ExtResource("34")
 
 [node name="WorldView" type="Node" parent="."]
 script = ExtResource("3")

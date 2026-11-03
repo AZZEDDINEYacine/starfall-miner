@@ -1,4 +1,75 @@
-# Starfall Miner — substantial Power progression and sustained laser audio
+# Starfall Miner — cinematic artwork and glass revision (3 November 2026)
+
+**Current revision: source and asset inspection only; user-run build/import/runtime checks pending.** The earlier 366/0 regressions and 108 live checks below apply to the previous visual revision, before the new artwork, lighting and glass layers. The assistant did not run a build, Godot import, game, regression suite, rendered preview or automated UI check for this revision. No Android export or physical device testing was performed.
+
+The user approved a richer blue/cyan direction with violet accents inspired by two supplied images, including creation of original nebula, basalt and distant ringed-planet assets. All three were generated with the built-in imagegen tool, visually inspected as assets and copied into `assets/art/`; exact prompts, dimensions and use are recorded in `assets/art/README.md`. The ringed-world PNG's non-opaque RGBA channel was confirmed by read-only metadata inspection and retained without alteration. The supplied reference files are not bundled. No image-generation CLI, additional package, plugin or runtime service was installed.
+
+Implemented presentation changes: static cover-cropped detailed nebula; dim cropped ringed world primarily behind commands; three static orbital arcs and a thin viewport frame; detailed surface sampling on surviving ordinary Default cells with hemispheric lighting and blue exposed edges; shared nine-slice SVG glass beneath native text; stronger control feedback and a static orbital drydock beneath the live hull. Inter, the two stable world-style IDs, resource/charge drawing, visible-cell culling, existing particle budgets, button rectangles, callbacks, ownership/modal barriers and ignition timing remain. `LOCKED` / `CRAFT` labels retain the exact strings required by existing assertions. No gameplay, economy, progression, save, flight settings or tests were changed for this revision.
+
+Source inspection covers resource paths and new Godot API names against installed API documentation, alpha/order of native labels over glass, static processing behavior, source-region bounds for extended terrain, original input/callback paths, and reusable texture/style objects. The new PNGs are two 1254 × 1254 RGB images and one 1536 × 1024 RGBA image, shared across views. No per-cell nodes, full-screen blur, extra viewport, per-frame texture generation or new animations were added. Runtime readability, drawing order, device cost and interaction results remain unverified for the new revision.
+
+User handoff, using the existing Fedora/Godot .NET setup:
+
+1. Run `python3 tools/dev.py build`.
+2. Open the project in the existing **.NET Godot editor** and wait for PNG/SVG asset imports. Use this normal editor path for the new art because the headless `import` command has the unresolved native editor-exit crash recorded below.
+3. Run the following sequentially; close normal play before starting the suites, and do not run persistence suites concurrently:
+
+```sh
+python3 tools/dev.py run
+python3 tools/dev.py test
+python3 tools/dev.py test-rendered
+python3 tools/rendered_check.py
+```
+
+Review portrait 540 × 960 / 390 × 844 and wide desktop 960 × 540 / 844 × 390. Expect detailed but subordinate background art, sharp labels, visible controls and the persistent fitted-hull view. Check normal/hover/press/selection/disabled/focus states throughout HUD, tabs, pages, Power/Fire Rate controls, market, cargo, pause and design comparison. Verify continuous rock detail only on remaining ordinary Default cells, transparent mined gaps, stronger damage brightness, readable shadowed faces, fixed rare-resource colors/red charges and unchanged Original terrain. The distant ringed body must stay decorative and static. Glass and frame edges must not introduce clipped labels, block touches or move hit areas.
+
+Use the existing injected ScreenTouch/ScreenDrag and scaled engine-mouse checks: held movement/mining, stationary-thumb steering as the camera follows, drag-to-turn, second-finger weapon/Boost touches, release/cancellation, immediate modal blocking and single-charge purchases. Also check resize, focus loss, pause and mode-change cancellation, workshop scrolling, retained docking/Rate behavior and settled tab/page/purchase refreshes. Existing ignition should run only at its existing entry points; all new artwork, lighting and orbital lines remain static. Desktop/injected input and physical Android testing are separate categories; neither has been performed by the assistant for this revision. Hardware performance and thermal limits remain unverified.
+
+---
+
+# Previous visual revision — user-validated observatory design (2–3 November 2026)
+
+**Current status: normal desktop play works by user report; both regression reruns passed by user confirmation; the latest smoke log records 366 checks with 0 failures. The user-run live rendered checks recorded 108 passes. The editor import crash remains unresolved.** The assistant did not execute a build, Godot import, script/test suite, game launch, rendered preview, screenshot capture or automated UI check for this redesign. No physical Android testing or performance profiling was performed. Historical results below describe earlier source and do not validate these changes. The assistant did not open a player save or produce a native package.
+
+The user's first import attempt on Fedora/Python 3.14 failed inside `argparse`, before the C# build or Godot import: the local `tools/inspect.py` shadowed Python's standard-library `inspect` module. The helper has been renamed to `tools/qa_client.py`, with its rendered-check import and documented commands updated. The subsequent user attempt progressed past that Python exception.
+
+The next user-supplied import log reached Godot but reported no loader for every `.cs` resource. The log identifies the standard Fedora engine, while the existing VS Code settings point to an installed Godot 4.7.2 .NET executable. `tools/dev.py` now honors `GODOT4`, then that existing editor setting, then Mono-named PATH executables before generic `godot`, and prints its selection. No engine/SDK was installed, no local settings were changed, and the assistant has not launched the corrected command. The user's subsequent run selected the .NET engine and no longer logged the previous loader/parse errors.
+
+The earlier user import screenshot reports a successful incremental `StarfallMiner net10.0` build. Its associated import log identified the official 4.7.2 Mono engine and reached `Editor layout ready`. The terminal then reported a null editor singleton in `is_cmdline_mode` and a native Godot/CoreCLR crash (signal 11; the Python wrapper reports SIGABRT). This was not a successful import exit. The exact native cause is unconfirmed; editor import/exit is the current suspected failure path. No crash-suppression or success-on-error workaround has been added. The user subsequently ran `python3 tools/dev.py run` and reported that the game runs perfectly. This is a user-reported desktop play result, not an assistant rendering inspection. Subsequent user-run check results are recorded below.
+
+On 3 November 2026, the user supplied regression screenshots and reported that everything else was good. The earlier rendered OpenGL smoke run recorded **366 checks, 2 failures**: the two blueprint research assertions in `tests/OnboardingBalance.cs` expect exact `LOCKED` and `CRAFT` labels, while the redesign had changed their capitalization to `Locked` and `Craft`. The original labels were restored in `Hud.Workshop.cs`, preserving the new styling, research logic and existing tests. The user then confirmed **0 failures** after the requested sequential `python3 tools/dev.py test` and `python3 tools/dev.py test-rendered` reruns. Reading the latest existing `.godot/runtime.log` independently confirms **RESULT: 366 checks; 0 failures**. The assistant did not execute either suite. Save warnings shown alongside passing rejection assertions are expected malformed/invalid-save fixtures.
+
+The user's existing `builds/qa/rendered-results.json`, written after the smoke run, records **108 checks with `passed: true` and none with `passed: false`**. These are completed user-run desktop/injected-input checks on the source before the one-line label correction, not assistant-executed tests or physical Android validation. The assistant reviewed the log/result text, not game screenshots or rendering. Detailed visual acceptance is the user's report; physical device input, frame time and thermal profiling remain unverified.
+
+Implemented on `abdo-work`, starting from a clean working tree: static navy/blue/violet galaxy, bundled Inter 4.1 Regular/Semibold with upstream OFL notice, shared rounded neon controls, lunar/basalt Clean Frontier surface shading, and responsive wide desktop workshop/header layouts. Default/Original IDs and the Original terrain renderer remain. Export preset changes only include the new font license. No development environment, package, SDK or tool configuration was changed.
+
+Source review covers shared resource/scene references, drawing bounds, visible-cell terrain culling, font-size fitting, existing button IDs and transaction callbacks, flight-region coordinates, modal barriers, touch cancellation and workshop ignition logic. The new background is static (18 shared-gradient cloud patches, 156 stars, no processing loop). Basalt detail uses bounded scalar work on surviving visible ordinary cells; resource cells retain their existing shared 128-particle budget. No per-cell scene nodes, external image textures or new blur passes were added. Desktop layout adjustments keep the existing world region and camera mapping; phones retain portrait orientation.
+
+Run the documented checks sequentially from the project root (do not run persistence suites concurrently):
+
+```sh
+python3 tools/dev.py import
+python3 tools/dev.py test
+python3 tools/dev.py test-rendered
+python3 tools/rendered_check.py
+python3 tools/dev.py run
+```
+
+`import` is needed for the newly bundled fonts and also builds the C# project. The isolated regression/QA commands do not use the player save. `run` launches normal play with the player's usual save. Keep the existing Fedora `GODOT4`/SDK setup. No Android export is requested.
+
+Visual and interaction review still required:
+
+- Inspect portrait desktop windows at 540 × 960 and 390 × 844, then wide windows at 960 × 540 and 844 × 390. Expect readable labels, separated actions, visible Back/Close controls and a persistent fitted-hull preview. Wide workshop content should appear beside the preview. Check all tabs, recipe/equipment pages, upgrade costs/rank limits, market quantities, cargo, pause/reset confirmation and design comparison. Inspect shorter-panel scrolling and ensure clipped buttons cannot activate outside its content viewport.
+- Compare Default and Original on the same paused, partly mined world. Expect basalt detail on surviving ordinary Default squares, brighter damaged faces, open mined gaps, fixed rare-resource colors and obvious red charges; Original remains flat. Style changes must preserve terrain, health, wallet and pending rewards. The galaxy stays still and subordinate to gameplay information.
+- Review mouse normal/hover/pressed states, selected tabs/categories/weapons and disabled appearance wherever controls are disabled. Tab/Shift-Tab inside a modal should reveal a violet focus outline and allow normal button activation. Flight Tab must retain its mode shortcut.
+- Inject real ScreenTouch/ScreenDrag through Viewport.PushInput: hold to move and mine, drag to turn, leave a thumb stationary while the camera follows, switch weapons/activate Boost with another finger, and release to stop. Opening a modal must stop control immediately. Check canceled/outside releases, synthesized mouse deduplication, single-charge purchases, resize, mode change, pause and focus loss. Test the engine mouse path at scaled window sizes separately.
+- Confirm the existing three-second ignition settles and does not restart on workshop tab/category changes, paging, purchases or resize. New background/planet lighting must not move. Check beam cancellation and sustained sound as existing behavior.
+
+Injected desktop touch, desktop resizing and physical Android testing are separate validation categories. None has been performed for this redesign; assess device frame time, thermal behavior and physical multi-touch on hardware before making mobile performance claims.
+
+---
+
+# Historical: substantial Power progression and sustained laser audio
 
 Power now adds **60% of base damage per level** across all six weapons: 4× at level 5 and 13× at level 20, replacing the old 1.68×/2.28× multipliers. Rank caps, saved item levels, separate Rate tuning, docking rules and prices remain intact. Flux beam base output doubles to 6.8 damage/s; Ion hits rise from 1.6 to 3.2 and Bore from 2.6 to 4.4, preserving chain/rare-armor behavior. Fresh Photon remains 1.1 damage; cannon and Nova retain their area damage bases. Values are authored in `resources/progression.tres` and workshop Power readouts use the same resource-backed multiplier.
 

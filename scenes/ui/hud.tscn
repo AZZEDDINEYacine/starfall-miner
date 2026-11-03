@@ -2,8 +2,8 @@
 
 [ext_resource type="Script" path="res://scripts/Hud.cs" id="1"]
 [ext_resource type="Theme" path="res://resources/hud_theme.tres" id="2"]
-[ext_resource type="FontFile" path="res://assets/Interface.ttf" id="3"]
-[ext_resource type="FontFile" path="res://assets/Telemetry.ttf" id="4"]
+[ext_resource type="FontFile" path="res://assets/Inter-Regular.ttf" id="3"]
+[ext_resource type="FontFile" path="res://assets/Inter-SemiBold.ttf" id="4"]
 [ext_resource type="PackedScene" path="res://scenes/ui/touch_button.tscn" id="5"]
 [ext_resource type="PackedScene" path="res://scenes/ui/panel.tscn" id="6"]
 

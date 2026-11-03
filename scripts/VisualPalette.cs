@@ -11,6 +11,12 @@ public partial class VisualPalette : Resource
     [ExportGroup("World & Ship")]
     [Export] public Color Background { get; set; }
     [Export] public Color Stars { get; set; }
+    [Export] public Color NebulaBlue { get; set; } = new("315caa");
+    [Export] public Color NebulaViolet { get; set; } = new("7550a9");
+    [Export] public Texture2D? NebulaArtwork { get; set; }
+    [Export] public Texture2D? DistantPlanetArtwork { get; set; }
+    [Export(PropertyHint.Range, "0,1,0.01")] public float NebulaOpacity { get; set; } = 0.72f;
+    [Export(PropertyHint.Range, "0,1,0.01")] public float DistantPlanetOpacity { get; set; } = 0.46f;
     [ExportGroup("HUD")]
     [Export] public Color Ink { get; set; }
     [Export] public Color MutedInk { get; set; }

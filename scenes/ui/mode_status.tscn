@@ -1,7 +1,7 @@
 [gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scripts/ModeStatusOverlay.cs" id="1"]
-[ext_resource type="FontFile" path="res://assets/Telemetry.ttf" id="2"]
+[ext_resource type="FontFile" path="res://assets/Inter-Regular.ttf" id="2"]
 [ext_resource type="Resource" path="res://resources/hologram_style.tres" id="3"]
 [ext_resource type="Resource" path="res://resources/mode_transition.tres" id="4"]
 

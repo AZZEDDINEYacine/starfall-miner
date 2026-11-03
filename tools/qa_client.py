@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""One JSON request per localhost connection to the opt-in C# QA scene."""
+"""One JSON request per localhost connection to the opt-in C# QA scene.
+
+Keep this helper's name distinct from Python's standard-library inspect module.
+"""
 import json
 import socket
 import sys

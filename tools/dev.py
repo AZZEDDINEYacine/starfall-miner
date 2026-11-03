@@ -10,7 +10,31 @@ import subprocess
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
-GODOT = os.environ.get("GODOT4") or shutil.which("godot") or "/Applications/Godot_mono.app/Contents/MacOS/Godot"
+
+
+def find_godot():
+    override = os.environ.get("GODOT4")
+    if override:
+        return override
+    # Reuse the editor already configured for this checkout. A system `godot`
+    # command can be the standard build, which cannot load this project's C#.
+    try:
+        settings = json.loads((ROOT / ".vscode/settings.json").read_text())
+    except (OSError, ValueError):
+        settings = {}
+    configured = settings.get("godotTools.editorPath.godot4") if isinstance(settings, dict) else None
+    if isinstance(configured, str) and configured:
+        editor = Path(os.path.expandvars(configured)).expanduser()
+        if editor.is_file() and os.access(editor, os.X_OK):
+            return str(editor)
+    for command in ("godot-mono", "godot4-mono", "godot"):
+        executable = shutil.which(command)
+        if executable:
+            return executable
+    return "/Applications/Godot_mono.app/Contents/MacOS/Godot"
+
+
+GODOT = find_godot()
 ENV = dict(os.environ, DOTNET_CLI_HOME=str(ROOT / ".godot/dotnet"), NUGET_PACKAGES=str(ROOT / ".godot/nuget"),
            DOTNET_CLI_TELEMETRY_OPTOUT="1", DOTNET_SKIP_FIRST_TIME_EXPERIENCE="1")
 
@@ -24,6 +48,7 @@ def build():
 
 
 def godot(*args):
+    print(f"Godot executable: {GODOT}", flush=True)
     run(GODOT, "--path", str(ROOT), "--log-file", str(ROOT / ".godot/runtime.log"), *args)
 
 

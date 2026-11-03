@@ -1,70 +1,144 @@
-[gd_resource type="Theme" load_steps=7 format=3]
+[gd_resource type="Theme" load_steps=14 format=3]
 
-[ext_resource type="FontFile" path="res://assets/Interface.ttf" id="1"]
+[ext_resource type="FontFile" path="res://assets/Inter-Regular.ttf" id="1"]
+[ext_resource type="FontFile" path="res://assets/Inter-SemiBold.ttf" id="2"]
 
 [sub_resource type="StyleBoxFlat" id="normal"]
-bg_color = Color(0.054901961, 0.098039216, 0.129411765, 1.000000000)
+bg_color = Color(0.0431, 0.0745, 0.1451, 0.96)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.160784314, 0.250980392, 0.278431373, 1.000000000)
-corner_radius_top_left = 3
-corner_radius_top_right = 3
-corner_radius_bottom_right = 3
-corner_radius_bottom_left = 3
-content_margin_left = 12.0
-content_margin_right = 12.0
+border_color = Color(0.18, 0.29, 0.43, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+content_margin_left = 10.0
+content_margin_right = 10.0
 
 [sub_resource type="StyleBoxFlat" id="hover"]
-bg_color = Color(0.090196078, 0.164705882, 0.192156863, 1.000000000)
+bg_color = Color(0.07, 0.14, 0.24, 1)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.549019608, 0.917647059, 0.796078431, 1.000000000)
-corner_radius_top_left = 3
-corner_radius_top_right = 3
-corner_radius_bottom_right = 3
-corner_radius_bottom_left = 3
-content_margin_left = 12.0
-content_margin_right = 12.0
+border_color = Color(0.4039, 0.9098, 0.9765, 0.8)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+content_margin_left = 10.0
+content_margin_right = 10.0
 
 [sub_resource type="StyleBoxFlat" id="pressed"]
-bg_color = Color(0.145098039, 0.274509804, 0.247058824, 1.000000000)
+bg_color = Color(0.09, 0.22, 0.31, 1)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.549019608, 0.917647059, 0.796078431, 1.000000000)
-corner_radius_top_left = 3
-corner_radius_top_right = 3
-corner_radius_bottom_right = 3
-corner_radius_bottom_left = 3
+border_color = Color(0.9294, 0.9529, 1, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+content_margin_left = 10.0
+content_margin_right = 10.0
+
+[sub_resource type="StyleBoxFlat" id="disabled"]
+bg_color = Color(0.035, 0.055, 0.1, 0.85)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.15, 0.19, 0.26, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+content_margin_left = 10.0
+content_margin_right = 10.0
+
+[sub_resource type="StyleBoxFlat" id="focus"]
+draw_center = false
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.7725, 0.7059, 1, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[sub_resource type="StyleBoxFlat" id="panel"]
+bg_color = Color(0.0431, 0.0745, 0.1451, 0.98)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.18, 0.29, 0.43, 1)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 18
 content_margin_left = 12.0
 content_margin_right = 12.0
 
-[sub_resource type="StyleBoxFlat" id="panel"]
-bg_color = Color(0.054901961, 0.098039216, 0.129411765, 1.000000000)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.160784314, 0.250980392, 0.278431373, 1.000000000)
+[sub_resource type="StyleBoxFlat" id="scroll_track"]
+bg_color = Color(0.08, 0.12, 0.2, 1)
+content_margin_left = 4.0
+content_margin_right = 4.0
 corner_radius_top_left = 3
 corner_radius_top_right = 3
-corner_radius_bottom_right = 3
 corner_radius_bottom_left = 3
-content_margin_left = 12.0
-content_margin_right = 12.0
+corner_radius_bottom_right = 3
+
+[sub_resource type="StyleBoxFlat" id="scroll_grabber"]
+bg_color = Color(0.3, 0.53, 0.66, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_left = 3
+corner_radius_bottom_right = 3
+
+[sub_resource type="StyleBoxFlat" id="scroll_hover"]
+bg_color = Color(0.4039, 0.9098, 0.9765, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_left = 3
+corner_radius_bottom_right = 3
+
+[sub_resource type="StyleBoxEmpty" id="scroll_button"]
+content_margin_top = 0.0
+content_margin_bottom = 0.0
+
+[sub_resource type="StyleBoxEmpty" id="scroll_focus"]
 
 [resource]
 default_font = ExtResource("1")
 default_font_size = 15
-Button/colors/font_color = Color(0.898039216, 0.945098039, 0.941176471, 1.000000000)
-Button/colors/font_hover_color = Color(0.898039216, 0.945098039, 0.941176471, 1.000000000)
-Button/colors/font_pressed_color = Color(0.549019608, 0.917647059, 0.796078431, 1.000000000)
+Button/fonts/font = ExtResource("2")
+Button/colors/font_color = Color(0.9294, 0.9529, 1, 1)
+Button/colors/font_hover_color = Color(1, 1, 1, 1)
+Button/colors/font_pressed_color = Color(1, 1, 1, 1)
+Button/colors/font_hover_pressed_color = Color(1, 1, 1, 1)
+Button/colors/font_disabled_color = Color(0.4118, 0.4588, 0.5569, 1)
+Button/colors/font_focus_color = Color(0.9294, 0.9529, 1, 1)
 Button/styles/normal = SubResource("normal")
 Button/styles/hover = SubResource("hover")
 Button/styles/pressed = SubResource("pressed")
+Button/styles/hover_pressed = SubResource("pressed")
+Button/styles/disabled = SubResource("disabled")
+Button/styles/focus = SubResource("focus")
 Panel/styles/panel = SubResource("panel")
+VScrollBar/styles/scroll = SubResource("scroll_track")
+VScrollBar/styles/scroll_focus = SubResource("scroll_focus")
+VScrollBar/styles/grabber = SubResource("scroll_grabber")
+VScrollBar/styles/grabber_highlight = SubResource("scroll_hover")
+VScrollBar/styles/grabber_pressed = SubResource("scroll_hover")
+VScrollBar/styles/increment = SubResource("scroll_button")
+VScrollBar/styles/increment_highlight = SubResource("scroll_button")
+VScrollBar/styles/increment_pressed = SubResource("scroll_button")
+VScrollBar/styles/decrement = SubResource("scroll_button")
+VScrollBar/styles/decrement_highlight = SubResource("scroll_button")
+VScrollBar/styles/decrement_pressed = SubResource("scroll_button")

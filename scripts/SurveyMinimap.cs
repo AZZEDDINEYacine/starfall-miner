@@ -7,6 +7,7 @@ public partial class SurveyMinimap : Control
 {
     public Main Game { get; set; } = null!;
     public Font Font { get; set; } = null!;
+    public HologramStyle Ink { get; set; } = null!;
     public ulong RasterRevision { get; private set; }
     public int RasterUpdates { get; private set; }
     public float HalfExtent { get; private set; }
@@ -29,8 +30,8 @@ public partial class SurveyMinimap : Control
     {
         if (!force && RasterRevision == Game.Planet.TopologyRevision) return;
         HalfExtent = Game.Planet.MapRadius + 120;
-        _image.Fill(new Color("061118"));
-        var rock = new Color("49707a");
+        _image.Fill(Ink.Shadow);
+        var rock = Ink.Dim;
         foreach (var key in Game.Planet.Blocks.Keys)
         {
             var p = MiningPlanet.KeyPoint(key);
@@ -59,8 +60,8 @@ public partial class SurveyMinimap : Control
     public override void _Draw()
     {
         if (_texture == null) return;
-        var ink = new Color("83d5df"); var plot = Plot;
-        DrawRect(new Rect2(Vector2.Zero, Size), new Color("040c12"));
+        var ink = Ink.Cyan; var plot = Plot;
+        DrawRect(new Rect2(Vector2.Zero, Size), new Color(Ink.Shadow, 0.96f));
         DrawString(Font, new Vector2(4, 11), "SURVEY", HorizontalAlignment.Left, -1, 9, new Color(ink, 0.65f));
         DrawLine(new Vector2(0, 14), new Vector2(Size.X - 8, 14), new Color(ink, 0.3f), 1);
         DrawLine(new Vector2(Size.X, 22), new Vector2(Size.X, Size.Y), new Color(ink, 0.3f), 1);
@@ -69,12 +70,12 @@ public partial class SurveyMinimap : Control
         var b = MapPoint(Game.View.ScreenToWorld(new Vector2(Game.View.Size.X, Game.View.Size.Y - 234)));
         DrawRect(new Rect2(a, b - a), new Color(ink, 0.35f), false, 0.7f);
         foreach (var drone in Game.Equipment.Drones)
-            if (!drone.Docked) DrawCircle(MapPoint(drone.Position), 1.8f, drone.Recalling ? new Color("e6c087") : new Color("b3a1df"));
+            if (!drone.Docked) DrawCircle(MapPoint(drone.Position), 1.8f, drone.Recalling ? Ink.Amber : Ink.Focus);
         var point = MapPoint(Game.ShipPosition); var direction = Vector2.FromAngle(Game.ShipAngle);
         var side = new Vector2(-direction.Y, direction.X);
         _ship[0] = point + direction * 4; _ship[1] = point - direction * 3 + side * 2.3f;
         _ship[2] = point - direction; _ship[3] = point - direction * 3 - side * 2.3f;
-        DrawColoredPolygon(_ship, new Color("c4ffff"));
+        DrawColoredPolygon(_ship, Ink.Text);
     }
 
     public override void _ExitTree()
