@@ -407,3 +407,13 @@ The original demo APK and its private signing keystore were absent from the proj
 `adb devices -l` reports zero connected devices. No physical Android phone or emulator has been used for gameplay. Device graphics, physical touch, real OS rotation/animation, Android lifecycle behavior, and performance still require hardware validation. Godot documents mobile C# support as experimental. Desktop and injected-touch results do not substitute for that device pass.
 
 Godot 4.7.2's headless editor/import/export process emits a shutdown diagnostic about `EditorSettings` and `export/android/shutdown_adb_on_exit`; successful exports/imports return 0. This editor-shutdown issue is separate from the clean rendered game logs. A transient disk-full failure during toolchain setup was resolved by removing redundant task-generated download chunks and archives, then retrying the interrupted build steps.
+# Current level-design branch validation — 2026-11-03
+
+- Added the 100 uniquely named planet concepts and ten universe illustration atlases. A content check found 100 entries, 100 unique names, and all ten PNGs.
+- `python tools/dev.py build`: passed, zero warnings/errors.
+- `python tools/dev.py test-rendered`: passed, 366 checks, zero failures.
+- `python tools/rendered_check.py`: passed, 108 live rendered input checks. It exercised real touch/mouse paths and generated mobile-sized screenshots.
+- Imported all ten atlases in Godot 4.7.2. Inspected the rendered sector 1 and sector 4 planet screenshots; both show the atlas art through the terrain while resource cells remain distinct.
+- No APK/AAB or physical Android run was produced. Level selection UI, secret-universe interaction, and reward tuning remain outside this level-design-only pass.
+
+---

@@ -17,6 +17,8 @@ public partial class PlanetRenderer : Node2D
     public bool AnimationFrozen { get; set; }
     private MiningPlanet _planet = null!;
     private float _redrawTime;
+    private Texture2D? _planetAtlas;
+    private int _loadedArtworkUniverse = -1;
     private static readonly Vector2I[] Neighbors = [Vector2I.Left, Vector2I.Up, Vector2I.Right, Vector2I.Down];
     private static readonly float[] SectorHueShift = [0, 0.12f, 0.24f, 0.58f, -0.11f, 0.06f];
     public static Color TerrainColor(Color ink, int sector)
@@ -78,6 +80,7 @@ public partial class PlanetRenderer : Node2D
         VisibleSpecials = AnimatedParticles = 0;
         var transform = GetGlobalTransformWithCanvas();
         var visible = (transform.AffineInverse() * GetViewportRect()).Grow(MiningPlanet.Cell);
+        DrawPlanetArtwork();
         int left = Mathf.FloorToInt(visible.Position.X / 16), right = Mathf.CeilToInt(visible.End.X / 16);
         int top = Mathf.FloorToInt(visible.Position.Y / 16), bottom = Mathf.CeilToInt(visible.End.Y / 16);
         for (int y = top; y <= bottom; y++)
@@ -96,7 +99,10 @@ public partial class PlanetRenderer : Node2D
             }
             var color = TerrainColor(Style.BlockColor(block, Palette), Planet.Sector);
             if (Style.Treatment == PlanetVisualStyle.Surface.FlatGrid)
+            {
+                if (_planetAtlas != null) color.A = 0.68f;
                 DrawRect(new Rect2(p - Vector2.One * Style.TileSize * 0.5f, Vector2.One * Style.TileSize), color);
+            }
             else
             {
                 int mask = EdgeMask(key);
@@ -105,11 +111,33 @@ public partial class PlanetRenderer : Node2D
                     for (int i = 0; i < 4; i++)
                         if (!Planet.Blocks.ContainsKey(key + Neighbors[i] * 2)) { rim = 0.28f; break; }
                 var neon = color.Darkened(hash % 4 * 0.055f).Lerp(TerrainColor(Style.DamagedColor(MiningPlanet.Stone, Palette), Planet.Sector), rim);
+                if (_planetAtlas != null) neon.A = 0.68f;
                 DrawRect(new Rect2(p - Vector2.One * 8, Vector2.One * 16), neon);
                 Exterior(p, mask);
             }
         }
     }
+
+    private void DrawPlanetArtwork()
+    {
+        int level = Math.Clamp(Planet.Sector, 1, LevelDesignCatalog.CampaignLength);
+        var design = LevelDesignCatalog.ForLevel(level);
+        if (_loadedArtworkUniverse != design.UniverseIndex)
+        {
+            _planetAtlas = GD.Load<Texture2D>(LevelDesignCatalog.AtlasPathForUniverse(design.UniverseIndex));
+            _loadedArtworkUniverse = design.UniverseIndex;
+        }
+        if (_planetAtlas == null) return;
+
+        int cellWidth = _planetAtlas.GetWidth() / 4;
+        int cellHeight = _planetAtlas.GetHeight() / 3;
+        int localLevel = (level - 1) % LevelDesignCatalog.LevelsPerUniverse;
+        var source = new Rect2(localLevel % 4 * cellWidth, localLevel / 4 * cellHeight, cellWidth, cellHeight);
+        float diameter = Planet.MapRadius * 2;
+        var destination = new Rect2(Vector2.One * (-diameter * 0.5f), Vector2.One * diameter);
+        DrawTextureRectRegion(_planetAtlas, destination, source, Colors.White, false, true);
+    }
+
     private void DrawSpecial(Vector2 p, OreBlock block, uint hash, bool inFlightArea)
     {
         int design = block.Material >= 0 ? block.Material : block.Kind switch { MiningPlanet.Gold => 3, MiningPlanet.Crystal => 4, MiningPlanet.Core => 5, _ => 6 };
